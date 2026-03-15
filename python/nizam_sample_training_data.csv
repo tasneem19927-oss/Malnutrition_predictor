@@ -1,0 +1,501 @@
+child_id,child_name,age_months,sex,weight_kg,height_cm,muac_cm,region,is_stunted,is_wasted,is_underweight,stunting_zscore,wasting_zscore,underweight_zscore
+1,"Peter Ofori",49,male,18.0,55.5,13.1,Eastern,1,0,0,-4.13,-0.54,-0.15
+2,"Mariam Mensah",4,female,5.4,35.4,14.8,Northern,1,0,0,-3.43,0.11,-0.70
+3,"Adaeze Frimpong",32,female,12.6,89.8,14.5,Western,0,0,0,-0.24,-0.22,-0.39
+4,"Joseph Amoah",41,male,15.9,97.5,12.9,Greater Accra,0,0,0,-0.16,-0.26,0.42
+5,"Philip Okafor",19,male,11.1,82.2,14.5,Western,0,1,0,-0.10,-4.14,0.02
+6,"Kadiatou Badu",44,female,18.7,114.1,15.5,Northern,0,0,0,0.36,-0.42,0.46
+7,"David Ibrahim",60,male,18.5,104.1,13.7,Volta,0,0,0,-0.44,0.23,0.11
+8,"Joseph Adjei",47,male,19.0,61.1,14.8,Central,1,0,0,-3.70,-0.64,0.32
+9,"Emmanuel Adjei",40,male,15.3,102.1,13.1,Western,0,0,0,0.28,0.15,0.18
+10,"Kadiatou Nkrumah",45,female,18.3,116.4,14.4,Greater Accra,0,0,0,0.53,-0.55,0.29
+11,"Esi Okafor",9,female,7.7,72.5,13.3,Ashanti,0,1,0,0.31,-3.02,-0.44
+12,"Afia Gyasi",48,female,16.7,104.0,15.5,Eastern,0,0,0,-0.41,-0.35,-0.48
+13,"Aaron Darko",8,male,4.7,47.2,12.9,Central,1,0,1,-2.74,-0.07,-3.75
+14,"Emmanuel Asare",41,male,7.6,67.8,14.9,Northern,1,0,1,-2.65,-0.46,-4.17
+15,"Joshua Frimpong",5,male,7.4,65.8,12.2,Upper West,0,0,0,0.15,0.02,0.23
+16,"Ama Frimpong",32,female,12.8,96.8,14.3,Upper West,0,0,0,0.38,-0.06,-0.28
+17,"Michael Frimpong",13,male,10.6,47.0,15.2,Western,1,0,0,-3.23,-0.24,0.66
+18,"Peter Mensah",60,male,18.8,62.4,13.5,Central,1,0,0,-3.61,-0.61,0.25
+19,"Ama Amoah",55,male,19.8,109.8,14.1,Central,0,0,0,-0.02,-0.49,0.68
+20,"Joshua Al-Hassan",23,male,6.9,62.6,15.3,Eastern,1,0,1,-2.33,0.36,-3.55
+21,"Benjamin Al-Hassan",12,male,9.9,48.6,13.2,Greater Accra,1,0,0,-2.98,0.46,0.22
+22,"Michael Gyasi",1,male,3.8,52.5,12.7,Western,0,0,0,-0.06,0.47,-0.66
+23,"Mariam Okafor",1,female,4.1,48.0,12.7,Ashanti,0,0,0,-0.62,0.03,0.42
+24,"Michael Owusu",56,male,19.5,70.8,13.5,Central,1,0,0,-2.97,-0.08,0.54
+25,"Paul Darko",25,male,12.2,84.8,13.1,Eastern,0,1,0,-0.35,-3.86,-0.13
+26,"Halima Badu",13,female,6.2,50.7,14.2,Central,1,0,1,-2.71,0.64,-2.68
+27,"Fiifi Ibrahim",27,male,12.6,93.5,15.1,Central,0,0,0,0.33,0.47,-0.09
+28,"Paul Frimpong",15,male,9.6,43.3,12.3,Eastern,1,0,0,-3.77,-0.13,-0.52
+29,"Fiifi Asare",49,male,18.3,111.2,14.7,Greater Accra,0,0,0,0.09,-0.25,0.02
+30,"Benjamin Boateng",5,male,6.8,35.0,14.9,Central,1,0,0,-4.02,-0.04,-0.43
+31,"Adwoa Al-Hassan",16,female,10.6,46.8,13.4,Greater Accra,1,0,0,-3.36,0.64,0.72
+32,"Moses Frimpong",29,male,8.7,65.5,14.2,Central,1,0,1,-2.35,0.33,-2.79
+33,"Moses Adjei",52,male,16.8,115.0,15.7,Northern,0,0,0,0.38,-0.65,-0.68
+34,"Adwoa Asante",29,female,7.2,73.4,14.8,Brong-Ahafo,0,0,1,-1.54,-0.16,-3.54
+35,"Nathan Appiah",45,male,17.5,102.7,15.5,Western,0,0,0,-0.55,-0.37,-0.39
+36,"Ama Mensah",47,female,17.4,102.5,14.7,Ashanti,0,0,0,-0.52,0.11,-0.14
+37,"Ngozi Osei",13,female,9.5,48.8,15.1,Brong-Ahafo,1,0,0,-2.92,-0.75,0.29
+38,"Joshua Ibrahim",31,male,13.7,100.7,14.0,Western,0,0,0,0.68,-0.03,0.15
+39,"Kofi Acheampong",6,male,7.6,67.3,12.3,Brong-Ahafo,0,0,0,-0.03,-0.03,-0.37
+40,"Adwoa Asare",4,female,5.7,61.9,14.2,Greater Accra,0,0,0,0.24,-0.04,-0.36
+41,"Ama Appiah",4,female,2.8,48.9,14.5,Central,0,0,1,-1.55,0.62,-4.48
+42,"Daniel Ibrahim",25,male,13.2,92.5,14.2,Ashanti,0,0,0,0.37,0.53,0.59
+43,"Amara Badu",30,female,8.7,60.8,14.1,Upper West,1,0,1,-2.79,0.05,-2.72
+44,"Daniel Owusu",0,male,3.3,35.0,12.8,Northern,1,0,0,-3.07,-0.42,-0.02
+45,"Kofi Adjei",11,male,10.1,42.1,12.6,Volta,1,0,0,-3.62,0.70,0.67
+46,"Kadiatou Al-Hassan",15,female,10.2,44.1,13.9,Brong-Ahafo,1,0,0,-3.58,-0.72,0.55
+47,"Moses Adjei",31,male,8.6,72.0,14.1,Northern,0,0,1,-1.89,-0.47,-2.99
+48,"Amara Bonsu",28,female,12.3,52.7,14.3,Upper West,1,0,0,-3.42,-0.54,0.03
+49,"Aminata Asante",60,female,17.4,61.5,16.0,Eastern,1,0,0,-3.65,0.42,-0.16
+50,"Elijah Acheampong",23,male,11.0,81.0,15.5,Volta,0,1,0,-0.56,-4.48,-0.70
+51,"Joseph Al-Hassan",52,male,19.1,102.9,15.6,Ashanti,0,0,0,-0.54,0.32,0.37
+52,"Caleb Owusu",10,male,8.4,67.6,14.5,Ashanti,0,0,0,-0.62,0.68,-0.60
+53,"James Darko",8,male,5.8,47.7,12.3,Northern,1,0,1,-2.68,-0.46,-2.61
+54,"Amara Boateng",11,female,8.2,77.4,14.8,Western,0,0,0,0.54,-0.38,-0.48
+55,"Mariam Bonsu",38,female,6.8,73.8,14.3,Greater Accra,1,0,1,-2.00,0.22,-4.40
+56,"Aminata Nkrumah",8,female,7.6,73.6,14.5,Western,0,1,0,0.63,-2.68,-0.27
+57,"Akua Mensah",0,female,3.4,53.2,12.5,Upper West,0,0,0,0.69,0.21,0.43
+58,"Mariam Osei",7,female,7.0,67.8,12.9,Ashanti,0,0,0,0.09,-0.28,-0.61
+59,"Joshua Acheampong",6,male,8.3,63.0,12.6,Greater Accra,0,0,0,-0.57,0.12,0.42
+60,"Zainab Al-Hassan",48,female,18.5,116.1,13.1,Volta,0,0,0,0.51,0.05,0.37
+61,"Yaa Al-Hassan",18,female,10.5,55.9,14.2,Greater Accra,1,0,0,-2.57,0.44,0.23
+62,"Fanta Boateng",10,female,7.9,65.1,13.5,Upper West,0,1,0,-0.72,-4.23,-0.52
+63,"Philip Asante",33,male,13.4,92.1,13.0,Brong-Ahafo,0,0,0,-0.20,0.46,-0.27
+64,"Amara Gyasi",38,female,14.3,88.4,15.6,Upper East,0,0,0,-0.75,-0.02,-0.09
+65,"Akua Frimpong",29,female,11.6,93.9,14.4,Greater Accra,0,0,0,0.35,0.26,-0.58
+66,"Mariam Osei",20,female,11.3,81.4,14.3,Western,0,0,0,-0.12,-0.27,0.51
+67,"Ngozi Amoah",29,female,6.7,59.7,13.7,Central,1,0,1,-2.81,0.69,-3.88
+68,"Fiifi Amoah",1,male,2.3,41.3,12.1,Ashanti,0,0,1,-1.82,-0.57,-3.61
+69,"Benjamin Asare",22,male,12.8,80.5,12.7,Central,0,1,0,-0.53,-3.95,0.71
+70,"Michael Osei",39,male,14.7,99.1,14.9,Western,0,0,0,0.07,0.46,-0.05
+71,"Zainab Badu",38,female,14.9,63.0,13.0,Upper East,1,0,0,-2.92,0.17,0.32
+72,"Esi Nkrumah",38,female,14.4,102.0,14.8,Volta,0,0,0,0.42,0.13,-0.01
+73,"Samuel Osei",54,male,17.2,108.4,15.6,Western,0,0,0,-0.12,0.66,-0.51
+74,"Efua Boateng",11,female,8.9,73.6,15.1,Ashanti,0,1,0,0.11,-4.42,0.23
+75,"Akosua Ibrahim",54,female,16.6,66.9,13.2,Greater Accra,1,0,0,-3.24,-0.43,-0.50
+76,"Amara Badu",0,female,3.4,47.5,12.7,Northern,0,0,0,-0.26,-0.57,0.41
+77,"Akua Bonsu",3,female,5.6,35.0,12.1,Volta,1,0,0,-3.67,0.28,0.58
+78,"Adwoa Appiah",1,female,3.9,48.4,14.2,Brong-Ahafo,0,0,0,-0.56,-0.72,-0.06
+79,"Abena Osei",0,female,3.4,45.7,13.2,Upper West,0,0,0,-0.58,-0.72,0.46
+80,"Joshua Darko",49,male,16.9,107.0,14.5,Central,0,0,0,-0.23,0.48,-0.65
+81,"Aminata Asare",49,female,9.3,82.9,13.7,Northern,1,0,1,-2.02,-0.60,-3.94
+82,"Kweku Ofori",40,male,14.2,100.5,15.2,Upper West,0,0,0,0.14,-0.24,-0.45
+83,"Fanta Mensah",39,female,15.7,90.6,15.2,Upper East,0,0,0,-0.60,-0.18,0.67
+84,"Yaa Asante",59,female,16.4,104.6,13.9,Western,0,0,0,-0.36,-0.65,-0.62
+85,"Kojo Gyasi",53,male,19.7,110.0,14.2,Upper East,0,0,0,-0.00,-0.37,0.62
+86,"Fanta Appiah",30,female,12.0,84.6,15.5,Eastern,0,0,0,-0.61,-0.24,-0.56
+87,"Joshua Asare",34,male,12.8,91.5,13.6,Upper West,0,0,0,-0.29,-0.01,-0.68
+88,"Fatima Darko",39,female,7.0,75.2,12.9,Western,0,0,1,-1.92,-0.20,-4.33
+89,"Fiifi Nkrumah",10,male,9.4,73.6,15.1,Greater Accra,0,0,0,0.07,0.50,0.34
+90,"Yaa Nkrumah",12,female,8.9,79.0,14.0,Western,0,1,0,0.56,-3.04,-0.07
+91,"Isaac Badu",8,male,8.1,64.2,13.3,Upper East,0,1,0,-0.73,-4.31,-0.39
+92,"Halima Acheampong",36,female,15.2,96.3,14.3,Central,0,1,0,0.03,-2.83,0.65
+93,"Akosua Osei",7,female,7.7,69.1,13.8,Brong-Ahafo,0,0,0,0.25,-0.46,0.16
+94,"Moses Bonsu",21,male,11.1,45.5,13.7,Greater Accra,1,0,0,-3.88,0.57,-0.35
+95,"Caleb Mensah",26,male,12.8,41.4,14.2,Upper East,1,0,0,-4.47,0.45,0.19
+96,"Aaron Al-Hassan",43,male,18.0,118.7,15.3,Volta,0,1,0,0.66,-2.98,-0.13
+97,"Joseph Al-Hassan",34,male,13.5,94.1,15.2,Eastern,0,1,0,-0.07,-4.30,-0.25
+98,"Caleb Mensah",46,male,18.9,50.9,14.0,Central,1,0,0,-4.48,0.53,0.27
+99,"Afia Ofori",55,female,12.2,82.4,14.5,Volta,1,0,1,-2.06,-0.16,-2.59
+100,"Adwoa Asante",51,female,17.8,113.6,14.2,Ashanti,0,0,0,0.32,0.51,0.04
+101,"Akua Asante",9,female,8.4,37.6,13.1,Upper West,1,0,0,-3.85,0.15,0.33
+102,"Abena Mensah",45,female,17.8,107.7,14.2,Central,0,0,0,-0.13,0.41,0.03
+103,"Efua Ibrahim",16,female,9.1,76.8,14.1,Eastern,0,1,0,-0.17,-3.07,-0.62
+104,"Yaa Al-Hassan",13,female,6.1,58.5,13.1,Brong-Ahafo,0,0,1,-1.84,0.51,-2.82
+105,"Esi Adjei",53,female,16.8,112.4,15.6,Upper East,0,0,0,0.23,-0.61,-0.42
+106,"Ngozi Ibrahim",32,female,12.6,94.8,14.8,Central,0,1,0,0.20,-3.41,-0.42
+107,"Samuel Gyasi",56,male,17.5,64.7,14.1,Central,1,0,0,-3.43,-0.06,-0.38
+108,"Aminata Frimpong",52,female,8.2,76.4,15.5,Brong-Ahafo,1,0,1,-2.52,0.64,-4.46
+109,"Kofi Badu",9,male,8.0,47.6,13.7,Central,1,0,0,-2.80,-0.07,-0.73
+110,"Ngozi Amoah",11,female,5.0,50.9,12.6,Western,1,0,1,-2.49,-0.55,-3.49
+111,"Moses Darko",2,male,4.6,52.4,14.1,Upper West,0,0,0,-0.51,-0.65,-0.56
+112,"Amara Owusu",9,female,8.4,39.5,14.1,Western,1,0,0,-3.62,0.68,0.25
+113,"Fiifi Mensah",31,male,14.2,93.5,14.7,Central,0,0,0,0.04,0.41,0.47
+114,"Amara Gyasi",42,female,8.6,88.3,15.1,Central,0,0,1,-1.60,-0.15,-4.28
+115,"Ama Okafor",14,male,9.5,53.7,12.8,Greater Accra,1,0,0,-2.59,0.19,-0.47
+116,"Michael Adjei",35,male,13.6,65.1,14.4,Western,1,0,0,-2.65,-0.62,-0.29
+117,"Philip Mensah",16,male,11.1,87.1,12.9,Brong-Ahafo,0,0,0,0.73,0.57,0.48
+118,"Zainab Amoah",16,female,9.1,80.9,13.9,Eastern,0,0,0,0.25,0.56,-0.54
+119,"Zainab Boateng",14,female,8.7,81.1,14.0,Western,0,0,0,0.53,0.46,-0.56
+120,"Halima Acheampong",49,female,17.3,114.9,15.3,Volta,0,0,0,0.42,0.46,-0.21
+121,"Adwoa Nkrumah",30,female,12.7,90.2,15.2,Volta,0,0,0,-0.10,-0.72,-0.15
+122,"Kadiatou Amoah",13,female,5.1,51.9,13.8,Central,1,0,1,-2.57,-0.31,-3.66
+123,"Zainab Darko",31,female,13.2,89.5,13.7,Greater Accra,0,1,0,-0.22,-2.69,0.10
+124,"Joshua Acheampong",17,male,10.0,52.9,14.0,Upper West,1,0,0,-2.90,0.16,-0.54
+125,"Peter Gyasi",40,male,13.9,101.2,14.7,Greater Accra,0,0,0,0.20,0.47,-0.59
+126,"Michael Al-Hassan",7,male,4.2,48.3,13.6,Upper East,1,0,1,-2.50,0.02,-4.09
+127,"Kojo Ibrahim",51,male,17.7,53.0,14.2,Upper West,1,0,0,-4.31,-0.40,-0.25
+128,"Samuel Badu",21,male,7.2,55.6,13.8,Ashanti,1,0,1,-2.89,-0.07,-3.16
+129,"Kweku Asare",19,male,7.6,64.0,15.0,Central,0,0,1,-1.93,0.33,-2.67
+130,"Yaa Nkrumah",1,female,2.1,35.0,14.0,Greater Accra,1,0,1,-2.84,-0.66,-3.81
+131,"Kweku Al-Hassan",41,male,15.4,99.6,13.7,Eastern,0,0,0,0.02,-0.04,0.16
+132,"Afia Badu",52,female,16.7,104.4,14.8,Upper East,0,0,0,-0.38,0.56,-0.46
+133,"Caleb Acheampong",3,male,5.6,60.2,13.8,Brong-Ahafo,0,1,0,0.21,-3.08,-0.01
+134,"Nathan Mensah",47,male,19.2,105.6,13.4,Volta,0,0,0,-0.33,-0.22,0.39
+135,"Michael Ibrahim",47,male,16.8,111.9,14.3,Upper West,0,0,0,0.14,-0.23,-0.70
+136,"Abena Mensah",0,female,3.5,35.0,12.7,Eastern,1,0,0,-2.50,0.31,0.68
+137,"James Asante",13,male,9.5,44.6,14.0,Volta,1,0,0,-3.49,-0.14,-0.28
+138,"Michael Badu",17,male,11.5,45.2,14.1,Central,1,0,0,-3.70,-0.44,0.63
+139,"Joshua Gyasi",22,male,11.9,48.6,14.4,Greater Accra,1,0,0,-3.63,0.59,0.08
+140,"Akua Bonsu",50,female,18.2,115.9,14.5,Northern,0,0,0,0.50,0.05,0.24
+141,"Kwame Acheampong",44,male,16.8,118.8,14.0,Upper West,0,0,0,0.67,0.67,-0.68
+142,"Caleb Adjei",9,male,8.2,37.4,14.9,Western,1,0,0,-3.98,0.06,-0.60
+143,"Ama Asare",42,male,18.3,110.2,13.3,Upper West,0,0,0,0.02,0.58,-0.01
+144,"Aminata Appiah",10,female,5.9,49.7,13.1,Upper West,1,0,1,-2.52,-0.40,-2.53
+145,"Yaa Okafor",19,female,10.3,45.1,12.6,Ashanti,1,0,0,-3.73,0.38,-0.07
+146,"Esi Bonsu",20,female,11.4,83.2,14.3,Western,0,0,0,0.06,-0.42,0.58
+147,"Fatima Okafor",0,female,2.0,36.0,13.7,Greater Accra,1,0,1,-2.22,-0.18,-3.41
+148,"Kadiatou Adjei",27,female,7.5,58.7,13.2,Northern,1,0,1,-2.81,-0.17,-3.18
+149,"Michael Badu",0,male,3.1,51.3,12.4,Ashanti,0,0,0,0.23,0.36,-0.66
+150,"Abena Gyasi",42,female,17.3,119.0,14.9,Central,0,0,0,0.73,-0.22,-0.19
+151,"Afia Darko",21,female,6.8,67.8,14.5,Northern,0,0,1,-1.57,-0.41,-3.10
+152,"Abena Amoah",52,female,16.6,108.1,14.9,Upper East,0,0,0,-0.10,-0.64,-0.50
+153,"David Osei",55,male,11.3,86.1,14.9,Brong-Ahafo,0,0,1,-1.81,0.52,-3.18
+154,"Emmanuel Ofori",49,male,11.6,74.1,13.8,Brong-Ahafo,1,0,1,-2.72,0.67,-3.06
+155,"Esi Boateng",13,female,4.6,49.6,14.5,Upper East,1,0,1,-2.83,0.36,-4.18
+156,"Fanta Al-Hassan",3,female,2.4,42.8,13.6,Central,1,0,1,-2.12,0.01,-4.48
+157,"Efua Appiah",48,female,19.2,55.1,14.2,Volta,1,0,0,-4.14,-0.52,0.71
+158,"Akosua Acheampong",43,female,8.9,77.0,13.6,Central,1,0,1,-2.47,-0.45,-4.12
+159,"Zainab Bonsu",26,female,11.0,40.9,15.2,Upper West,1,0,0,-4.45,-0.53,-0.64
+160,"Joseph Darko",51,male,8.8,84.0,14.2,Northern,0,0,1,-1.97,0.29,-4.31
+161,"Kwame Badu",15,male,11.2,83.7,14.6,Central,0,0,0,0.49,-0.32,0.75
+162,"Esi Acheampong",21,female,10.3,87.7,12.7,Upper West,0,1,0,0.42,-4.11,-0.42
+163,"Yaa Boateng",38,female,14.3,103.6,13.5,Upper East,0,0,0,0.55,0.38,-0.05
+164,"Mariam Al-Hassan",23,female,10.9,55.4,14.7,Upper West,1,0,0,-2.93,0.59,-0.32
+165,"Caleb Okafor",11,male,8.7,74.0,12.5,Central,0,0,0,-0.03,0.40,-0.56
+166,"Adaeze Adjei",10,female,7.8,69.1,14.8,Upper East,0,0,0,-0.25,0.71,-0.62
+167,"Daniel Asare",38,male,13.4,68.2,14.2,Greater Accra,1,0,0,-2.52,-0.38,-0.68
+168,"Adaeze Owusu",39,female,15.3,93.5,13.7,Upper West,0,0,0,-0.36,0.48,0.43
+169,"Joshua Asare",37,male,15.1,94.8,13.1,Greater Accra,0,0,0,-0.21,-0.14,0.37
+170,"Kadiatou Nkrumah",39,female,15.0,89.4,15.8,Upper West,0,0,0,-0.70,-0.02,0.28
+171,"Ama Nkrumah",7,male,8.5,63.8,12.4,Central,0,0,0,-0.62,-0.29,0.27
+172,"Paul Bonsu",54,male,19.0,103.7,13.5,Greater Accra,0,1,0,-0.48,-3.65,0.34
+173,"Paul Boateng",12,male,10.3,81.4,12.3,Volta,0,0,0,0.62,-0.42,0.56
+174,"Caleb Acheampong",29,male,8.1,70.2,13.6,Western,0,0,1,-1.92,-0.46,-3.17
+175,"Joseph Owusu",37,male,14.4,95.1,13.9,Western,0,0,0,-0.18,0.54,-0.03
+176,"Adaeze Nkrumah",54,female,18.2,51.9,14.1,Upper West,1,0,0,-4.38,-0.00,0.23
+177,"Joshua Okafor",52,male,18.2,108.1,14.6,Upper East,0,1,0,-0.15,-4.18,-0.05
+178,"Emmanuel Okafor",12,male,10.2,77.8,13.4,Volta,0,0,0,0.23,-0.66,0.51
+179,"Kojo Boateng",3,male,3.5,39.9,12.2,Brong-Ahafo,1,0,1,-2.67,0.66,-3.22
+180,"Ama Al-Hassan",39,male,14.0,105.9,15.3,Upper West,0,0,0,0.64,-0.02,-0.48
+181,"Ama Osei",11,female,8.0,73.0,14.6,Greater Accra,0,1,0,0.04,-2.61,-0.68
+182,"Mariam Ibrahim",13,female,8.4,71.8,13.7,Upper West,0,1,0,-0.37,-2.92,-0.69
+183,"Peter Owusu",37,male,15.1,91.2,13.8,Eastern,0,0,0,-0.51,0.45,0.34
+184,"Kweku Asante",43,male,19.0,64.3,15.0,Upper East,1,0,0,-3.46,0.34,0.33
+185,"Efua Acheampong",32,female,13.6,97.2,14.7,Brong-Ahafo,0,0,0,0.42,-0.16,0.25
+186,"Fatima Gyasi",41,female,14.9,99.6,13.3,Volta,0,0,0,0.07,-0.43,0.04
+187,"Efua Ofori",46,female,16.5,108.8,13.5,Brong-Ahafo,0,0,0,-0.04,-0.32,-0.56
+188,"Akua Darko",18,female,10.4,77.9,15.2,Volta,0,0,0,-0.28,0.45,0.15
+189,"Benjamin Appiah",0,male,3.3,50.4,13.1,Upper West,0,0,0,0.08,0.31,-0.03
+190,"Yaa Darko",9,female,8.1,70.4,15.0,Volta,0,0,0,0.06,0.26,-0.04
+191,"Kojo Appiah",47,male,17.7,102.6,13.4,Greater Accra,0,0,0,-0.56,0.15,-0.25
+192,"Fanta Darko",56,female,12.2,83.2,16.0,Central,0,0,1,-1.99,0.12,-2.60
+193,"Ngozi Al-Hassan",10,female,8.2,65.3,14.9,Northern,0,0,0,-0.70,-0.55,-0.25
+194,"Amara Asante",14,female,9.9,75.2,12.9,Ashanti,0,0,0,-0.11,0.64,0.49
+195,"Aaron Badu",4,male,5.9,56.7,13.7,Upper West,0,0,0,-0.68,-0.39,-0.71
+196,"David Nkrumah",29,male,14.1,48.3,15.0,Upper East,1,0,0,-3.93,0.18,0.63
+197,"Moses Okafor",53,male,17.2,106.6,13.4,Upper West,0,0,0,-0.26,0.35,-0.52
+198,"Philip Frimpong",50,male,18.2,108.8,15.5,Western,0,0,0,-0.09,-0.15,-0.07
+199,"Kadiatou Darko",49,female,17.5,117.4,14.6,Eastern,0,0,0,0.61,0.73,-0.08
+200,"Mariam Acheampong",15,female,9.8,80.0,13.8,Volta,0,0,0,0.29,-0.00,0.22
+201,"Caleb Bonsu",57,male,8.5,72.4,15.2,Upper East,1,0,1,-2.85,0.14,-4.45
+202,"David Adjei",52,male,18.9,59.1,15.1,Greater Accra,1,0,0,-3.86,-0.47,0.25
+203,"Paul Bonsu",25,male,11.7,90.9,14.1,Volta,0,0,0,0.23,-0.26,-0.42
+204,"Mariam Asante",56,female,16.9,71.5,14.9,Central,1,0,0,-2.89,0.28,-0.40
+205,"Moses Darko",42,male,19.6,108.7,13.1,Eastern,0,1,0,-0.10,-3.77,0.58
+206,"Efua Badu",4,female,5.7,59.6,12.5,Western,0,0,0,-0.08,0.18,-0.34
+207,"Michael Acheampong",17,male,11.0,77.9,13.7,Brong-Ahafo,0,0,0,-0.34,-0.20,0.23
+208,"Adaeze Ofori",31,female,13.8,98.2,14.8,Greater Accra,0,0,0,0.57,-0.13,0.47
+209,"Aaron Osei",27,male,6.3,72.1,15.1,Brong-Ahafo,0,0,1,-1.64,0.44,-4.18
+210,"Ama Adjei",37,male,14.1,64.5,15.7,Brong-Ahafo,1,0,0,-2.80,-0.12,-0.23
+211,"Joseph Asante",3,male,3.7,39.0,12.2,Brong-Ahafo,1,0,1,-2.80,-0.66,-2.86
+212,"James Acheampong",10,male,4.9,49.3,12.6,Central,1,0,1,-2.70,0.37,-3.86
+213,"Zainab Bonsu",50,female,17.6,55.0,14.6,Central,1,0,0,-4.14,-0.31,-0.06
+214,"Afia Acheampong",5,female,6.3,36.7,13.4,Western,1,0,0,-3.47,-0.29,-0.45
+215,"Kofi Gyasi",15,male,10.2,77.3,13.9,Greater Accra,0,0,0,-0.18,0.63,-0.06
+216,"Aaron Osei",33,male,13.6,94.4,13.8,Upper East,0,0,0,0.01,-0.15,-0.14
+217,"Fatima Ibrahim",2,female,4.5,53.6,14.4,Eastern,0,0,0,-0.16,-0.09,-0.14
+218,"Elijah Okafor",29,male,8.4,74.0,13.9,Central,0,0,1,-1.57,0.65,-2.95
+219,"Halima Asante",16,female,10.0,71.6,14.6,Eastern,0,0,0,-0.73,-0.23,0.18
+220,"Fiifi Al-Hassan",39,male,15.1,94.5,12.9,Central,0,1,0,-0.32,-3.90,0.17
+221,"Abena Asante",23,female,10.7,40.2,14.1,Central,1,0,0,-4.41,-0.12,-0.42
+222,"Kofi Appiah",4,male,6.8,64.5,12.9,Volta,0,0,0,0.37,-0.39,0.58
+223,"Yaa Darko",28,female,12.2,94.3,13.9,Brong-Ahafo,0,0,0,0.47,-0.21,-0.07
+224,"Nathan Mensah",35,male,14.0,99.6,13.7,Ashanti,0,0,0,0.36,0.56,-0.05
+225,"Ama Acheampong",48,female,19.0,105.8,13.1,Upper West,0,0,0,-0.27,-0.17,0.60
+226,"Elijah Darko",58,male,19.3,68.4,15.3,Northern,1,0,0,-3.15,0.08,0.46
+227,"Fiifi Okafor",23,male,11.8,91.4,15.2,Northern,0,0,0,0.43,-0.56,-0.13
+228,"Kojo Ofori",51,male,19.2,52.9,15.3,Volta,1,0,0,-4.32,0.50,0.39
+229,"Efua Okafor",42,female,18.7,62.4,13.2,Central,1,0,0,-3.58,0.27,0.47
+230,"Afia Adjei",16,female,10.6,81.4,14.6,Brong-Ahafo,0,0,0,0.31,-0.01,0.69
+231,"Caleb Badu",43,male,17.5,114.5,14.8,Ashanti,0,0,0,0.34,-0.21,-0.36
+232,"Benjamin Gyasi",6,male,5.4,48.0,14.7,Upper West,1,0,1,-2.42,-0.65,-2.64
+233,"Akua Asante",8,female,7.6,47.0,12.6,Eastern,1,0,0,-2.61,0.51,-0.26
+234,"Akua Adjei",32,female,13.5,91.7,12.9,Western,0,0,0,-0.07,-0.47,0.14
+235,"Emmanuel Amoah",43,male,10.5,78.1,13.2,Central,1,0,1,-2.42,-0.42,-3.57
+236,"Abena Owusu",12,female,9.0,69.8,13.2,Eastern,0,1,0,-0.48,-3.75,0.04
+237,"Adwoa Mensah",44,female,18.4,106.1,15.6,Ashanti,0,1,0,-0.25,-3.57,0.31
+238,"Akua Frimpong",9,female,8.8,72.4,15.0,Northern,0,0,0,0.30,0.20,0.72
+239,"Halima Badu",46,female,11.3,82.9,14.1,Upper West,1,0,1,-2.02,-0.42,-3.00
+240,"Fatima Appiah",51,female,18.1,50.9,15.8,Ashanti,1,0,0,-4.46,0.46,0.17
+241,"Aminata Darko",46,female,19.1,117.1,13.2,Upper West,0,0,0,0.59,-0.74,0.64
+242,"Fanta Ofori",54,female,18.4,106.8,13.4,Brong-Ahafo,0,1,0,-0.20,-3.11,0.33
+243,"Samuel Boateng",20,male,10.6,89.7,13.1,Greater Accra,0,0,0,0.55,-0.33,-0.50
+244,"Fanta Appiah",50,female,19.0,113.5,13.5,Brong-Ahafo,0,0,0,0.31,-0.24,0.60
+245,"Benjamin Owusu",45,male,19.9,62.6,14.1,Upper West,1,0,0,-3.59,-0.58,0.71
+246,"Daniel Asare",36,male,13.8,104.9,13.9,Upper West,0,0,0,0.71,0.03,-0.27
+247,"Adwoa Osei",51,female,16.6,102.0,14.7,Greater Accra,0,0,0,-0.56,-0.66,-0.50
+248,"Nathan Gyasi",48,male,18.4,118.5,13.9,Upper East,0,0,0,0.65,0.74,0.04
+249,"Aminata Nkrumah",14,female,9.3,70.8,12.4,Eastern,0,1,0,-0.60,-2.82,-0.08
+250,"Paul Boateng",44,male,16.7,102.9,13.5,Central,0,1,0,-0.54,-4.27,-0.75
+251,"Afia Appiah",3,female,5.6,56.2,14.4,Northern,0,0,0,-0.18,-0.43,0.52
+252,"Zainab Al-Hassan",13,female,9.4,78.4,13.3,Northern,0,0,0,0.36,0.51,0.24
+253,"Aaron Boateng",2,male,4.7,60.3,13.7,Volta,0,0,0,0.67,0.37,-0.22
+254,"Fanta Frimpong",31,female,7.2,75.2,13.9,Central,0,0,1,-1.51,-0.38,-3.74
+255,"Adwoa Okafor",42,female,18.3,112.4,13.2,Western,0,0,0,0.23,-0.42,0.29
+256,"Kadiatou Badu",1,female,3.8,47.7,14.9,Central,0,0,0,-0.66,0.24,-0.18
+257,"David Appiah",32,male,13.6,88.3,14.1,Central,0,0,0,-0.48,0.47,-0.00
+258,"Akosua Asante",49,female,16.8,63.2,15.9,Upper West,1,0,0,-3.52,-0.67,-0.42
+259,"Caleb Amoah",34,male,15.0,50.1,12.8,Central,1,0,0,-3.93,0.62,0.62
+260,"Efua Al-Hassan",25,female,10.8,60.0,14.6,Upper East,1,0,0,-2.60,0.66,-0.62
+261,"Ngozi Okafor",60,female,18.1,111.0,15.6,Upper West,0,1,0,0.12,-3.72,0.20
+262,"Mariam Ibrahim",29,female,12.0,96.8,14.5,Upper East,0,0,0,0.63,0.21,-0.32
+263,"Paul Badu",34,male,14.9,65.4,15.5,Volta,1,0,0,-2.59,-0.34,0.58
+264,"Akua Asare",21,female,11.8,40.4,13.0,Upper East,1,0,0,-4.31,0.53,0.71
+265,"Akosua Acheampong",45,female,17.2,108.0,13.2,Upper West,0,0,0,-0.11,-0.61,-0.21
+266,"Halima Nkrumah",57,female,18.5,51.9,16.0,Greater Accra,1,0,0,-4.38,-0.74,0.37
+267,"Mariam Mensah",6,female,7.8,64.9,12.2,Western,0,0,0,-0.10,-0.35,0.53
+268,"Aminata Boateng",59,female,17.0,51.2,13.7,Northern,1,0,0,-4.43,-0.54,-0.34
+269,"Kofi Ofori",34,male,13.1,87.1,14.9,Northern,0,0,0,-0.68,0.45,-0.50
+270,"Paul Adjei",18,male,10.6,79.2,14.8,Upper West,0,0,0,-0.31,-0.67,-0.24
+271,"Ama Darko",23,female,5.6,56.2,14.9,Eastern,1,0,1,-2.86,0.16,-4.21
+272,"Kadiatou Al-Hassan",19,female,10.9,37.7,13.3,Upper West,1,0,0,-4.48,0.41,0.42
+273,"Halima Okafor",34,female,14.3,93.3,12.9,Ashanti,0,0,0,-0.05,-0.28,0.43
+274,"Aaron Adjei",45,male,17.7,55.6,14.9,Upper East,1,0,0,-4.12,-0.34,-0.28
+275,"Joshua Mensah",32,male,6.8,64.3,13.5,Eastern,1,0,1,-2.61,0.00,-4.17
+276,"Paul Frimpong",17,male,5.7,66.2,13.2,Western,0,0,1,-1.54,0.04,-3.92
+277,"Fatima Okafor",11,female,9.1,66.1,14.5,Northern,0,0,0,-0.75,0.14,0.41
+278,"Halima Ibrahim",52,female,16.3,116.5,14.9,Volta,0,1,0,0.54,-3.44,-0.68
+279,"Joseph Gyasi",32,male,14.0,101.8,14.1,Northern,0,0,0,0.72,0.55,0.21
+280,"Efua Owusu",2,female,4.7,35.0,13.4,Western,1,0,0,-3.21,0.37,0.12
+281,"Fatima Bonsu",23,female,10.9,45.4,15.1,Brong-Ahafo,1,0,0,-3.91,-0.70,-0.25
+282,"Emmanuel Appiah",50,male,18.3,62.8,13.9,Upper West,1,0,0,-3.58,-0.17,0.02
+283,"Ama Al-Hassan",22,male,11.4,83.1,12.9,Greater Accra,0,0,0,-0.28,0.48,-0.28
+284,"Fatima Ofori",7,female,6.9,66.0,14.4,Ashanti,0,1,0,-0.14,-3.81,-0.70
+285,"Philip Asante",4,male,6.9,40.4,13.9,Western,1,0,0,-2.87,0.06,0.63
+286,"Benjamin Acheampong",13,male,10.0,77.7,14.7,Brong-Ahafo,0,0,0,0.09,-0.25,0.08
+287,"Esi Al-Hassan",34,female,13.3,49.6,14.3,Upper East,1,0,0,-3.93,0.72,-0.19
+288,"Nathan Nkrumah",11,male,9.2,50.8,13.9,Eastern,1,0,0,-2.64,-0.56,-0.16
+289,"Peter Frimpong",49,male,19.3,114.0,13.8,Upper East,0,0,0,0.30,-0.17,0.46
+290,"Ama Acheampong",30,female,12.7,87.1,15.0,Northern,0,1,0,-0.38,-2.64,-0.15
+291,"Caleb Adjei",24,male,8.5,56.8,14.5,Western,1,0,1,-2.94,0.62,-2.52
+292,"Ngozi Acheampong",48,female,19.1,102.9,14.3,Greater Accra,0,0,0,-0.49,-0.72,0.65
+293,"Esi Asante",30,female,13.9,84.5,13.8,Eastern,0,0,0,-0.62,0.10,0.65
+294,"Aaron Appiah",33,male,13.1,92.5,13.8,Volta,0,1,0,-0.16,-3.02,-0.44
+295,"David Adjei",25,male,11.9,85.4,13.7,Brong-Ahafo,0,1,0,-0.29,-2.71,-0.35
+296,"Efua Al-Hassan",2,female,2.2,42.5,13.0,Brong-Ahafo,0,0,1,-1.85,0.26,-4.28
+297,"Benjamin Badu",10,male,8.9,67.1,14.4,Eastern,0,1,0,-0.67,-3.27,-0.19
+298,"Adwoa Ibrahim",53,female,9.6,86.8,15.7,Western,0,0,1,-1.72,-0.27,-3.82
+299,"Adwoa Ibrahim",18,female,11.1,73.5,14.4,Central,0,0,0,-0.75,0.30,0.72
+300,"Aaron Bonsu",21,male,12.2,89.4,13.7,Upper West,0,0,0,0.43,-0.30,0.45
+301,"Peter Okafor",2,male,5.2,35.0,12.2,Brong-Ahafo,1,0,0,-3.96,0.45,0.47
+302,"Esi Mensah",15,female,9.3,82.2,12.4,Western,0,0,0,0.52,0.45,-0.21
+303,"Ama Asante",51,female,16.3,117.2,13.8,Volta,0,0,0,0.60,-0.50,-0.68
+304,"Kwame Appiah",55,male,18.3,52.1,15.2,Ashanti,1,0,0,-4.39,0.47,0.02
+305,"Joseph Osei",60,male,16.7,64.5,14.0,Volta,1,0,0,-3.45,0.45,-0.71
+306,"Joshua Appiah",56,male,17.0,76.2,14.6,Volta,1,0,0,-2.56,-0.17,-0.58
+307,"Benjamin Owusu",28,male,12.3,97.7,14.2,Greater Accra,0,1,0,0.66,-2.78,-0.41
+308,"Efua Asare",23,female,11.2,86.2,14.1,Ashanti,0,0,0,0.08,0.34,-0.07
+309,"Adwoa Frimpong",13,female,4.7,57.0,12.5,Upper West,1,0,1,-2.01,-0.03,-4.02
+310,"Adaeze Adjei",19,female,9.5,75.0,12.8,Ashanti,0,0,0,-0.68,-0.51,-0.71
+311,"Akua Badu",24,female,12.0,47.8,13.4,Eastern,1,0,0,-3.73,-0.27,0.40
+312,"Abena Appiah",30,female,13.5,95.2,13.4,Eastern,0,1,0,0.36,-3.83,0.40
+313,"Isaac Nkrumah",15,male,9.8,53.8,14.7,Ashanti,1,0,0,-2.66,0.00,-0.38
+314,"Philip Boateng",6,male,7.5,67.5,13.8,Greater Accra,0,0,0,-0.01,-0.39,-0.48
+315,"Zainab Ibrahim",17,female,6.6,55.3,14.3,Upper East,1,0,1,-2.54,-0.47,-2.81
+316,"Samuel Owusu",14,male,10.5,43.4,13.1,Central,1,0,0,-3.69,0.54,0.33
+317,"Abena Nkrumah",39,female,15.3,99.1,14.0,Northern,0,1,0,0.12,-3.05,0.41
+318,"David Badu",44,male,17.8,112.2,15.3,Brong-Ahafo,0,0,0,0.17,-0.07,-0.21
+319,"Daniel Darko",31,male,12.7,89.4,12.7,Eastern,0,0,0,-0.33,-0.69,-0.45
+320,"Adaeze Okafor",31,female,13.2,64.0,14.5,Volta,1,0,0,-2.53,0.21,0.06
+321,"Abena Amoah",34,female,14.4,91.4,13.4,Volta,0,1,0,-0.22,-3.81,0.53
+322,"Fiifi Boateng",24,male,11.7,82.8,15.2,Volta,0,1,0,-0.47,-4.04,-0.33
+323,"Fatima Nkrumah",47,female,18.4,109.2,14.5,Eastern,0,1,0,-0.01,-3.17,0.31
+324,"Fatima Boateng",38,female,14.6,105.1,13.7,Western,0,1,0,0.69,-3.36,0.12
+325,"Fatima Nkrumah",45,female,17.8,107.3,14.6,Central,0,0,0,-0.16,0.24,0.04
+326,"Adwoa Okafor",36,female,14.4,49.4,15.1,Eastern,1,0,0,-4.04,-0.07,0.15
+327,"Fiifi Al-Hassan",7,male,8.4,43.7,14.1,Ashanti,1,0,0,-3.06,0.00,0.15
+328,"Aaron Ibrahim",24,male,13.3,54.8,15.4,Eastern,1,0,0,-3.14,-0.08,0.74
+329,"Halima Acheampong",22,female,11.1,80.6,14.2,Eastern,0,0,0,-0.39,-0.02,0.06
+330,"Halima Acheampong",36,female,14.2,61.4,14.8,Volta,1,0,0,-3.00,0.71,0.05
+331,"Adwoa Asante",2,female,4.3,52.4,13.4,Western,0,0,0,-0.34,-0.07,-0.60
+332,"Halima Okafor",14,female,9.8,69.6,12.7,Upper West,0,1,0,-0.73,-3.78,0.40
+333,"James Mensah",57,male,18.2,54.6,16.0,Northern,1,0,0,-4.20,0.33,-0.05
+334,"Mariam Appiah",41,female,16.1,101.8,15.5,Brong-Ahafo,0,0,0,0.25,-0.13,0.68
+335,"Samuel Gyasi",40,male,14.5,63.3,14.2,Northern,1,0,0,-3.00,-0.40,-0.28
+336,"Efua Asare",49,female,17.7,101.7,14.3,Ashanti,0,0,0,-0.59,-0.26,0.01
+337,"Mariam Okafor",35,female,14.7,95.4,14.8,Eastern,0,0,0,0.08,-0.46,0.60
+338,"Afia Nkrumah",29,female,12.7,93.4,14.2,Brong-Ahafo,0,0,0,0.31,0.59,0.16
+339,"Kofi Adjei",14,male,10.5,76.2,12.3,Central,0,0,0,-0.18,0.21,0.36
+340,"Aminata Asare",38,female,8.7,70.7,14.3,Upper East,1,0,1,-2.27,-0.29,-3.32
+341,"Joseph Adjei",13,male,10.4,44.0,14.0,Brong-Ahafo,1,0,0,-3.56,0.52,0.50
+342,"Adwoa Amoah",2,female,4.6,52.8,12.1,Western,0,0,0,-0.27,-0.09,0.03
+343,"Afia Adjei",15,female,9.9,82.6,12.7,Western,0,0,0,0.57,0.61,0.27
+344,"Akua Asare",24,female,12.3,93.7,15.1,Greater Accra,0,0,0,0.70,-0.12,0.59
+345,"Efua Al-Hassan",58,female,11.9,83.2,13.4,Northern,0,0,1,-1.99,-0.21,-2.71
+346,"Esi Okafor",27,female,12.8,60.5,15.1,Brong-Ahafo,1,0,0,-2.64,-0.48,0.46
+347,"Kojo Asare",40,male,15.9,105.4,14.8,Ashanti,0,0,0,0.56,-0.02,0.53
+348,"Abena Nkrumah",11,female,8.6,46.6,13.5,Western,1,0,0,-2.99,0.11,-0.12
+349,"Abena Acheampong",28,female,13.1,88.3,14.5,Northern,0,0,0,-0.09,0.50,0.54
+350,"Kadiatou Amoah",6,female,6.7,64.5,12.2,Upper East,0,0,0,-0.15,-0.42,-0.74
+351,"Isaac Frimpong",46,male,11.6,89.1,15.2,Northern,0,0,1,-1.58,0.02,-3.07
+352,"Esi Okafor",9,female,7.8,68.7,15.1,Upper West,0,1,0,-0.14,-4.43,-0.33
+353,"Afia Badu",9,female,7.4,65.1,14.1,Upper West,0,1,0,-0.56,-4.26,-0.72
+354,"Philip Owusu",48,male,16.7,62.4,13.1,Northern,1,0,0,-3.60,-0.61,-0.75
+355,"Adaeze Frimpong",45,female,18.8,118.7,15.1,Western,0,0,0,0.71,0.52,0.51
+356,"James Nkrumah",0,male,3.3,46.8,13.9,Northern,0,0,0,-0.52,-0.02,-0.21
+357,"Ama Appiah",9,female,8.2,71.0,13.0,Central,0,0,0,0.14,0.60,0.06
+358,"Nathan Okafor",48,male,19.3,71.9,14.1,Northern,1,0,0,-2.88,0.65,0.46
+359,"Afia Ofori",56,female,17.7,108.4,16.0,Upper East,0,0,0,-0.08,-0.26,-0.01
+360,"Ama Gyasi",19,female,7.3,58.1,14.8,Brong-Ahafo,1,0,1,-2.40,0.59,-2.52
+361,"Ngozi Asante",39,female,13.3,100.9,15.3,Brong-Ahafo,0,1,0,0.27,-3.19,-0.71
+362,"Mariam Okafor",28,female,12.8,61.5,14.5,Ashanti,1,0,0,-2.60,-0.44,0.36
+363,"Kweku Okafor",32,male,14.5,101.9,13.1,Brong-Ahafo,0,1,0,0.73,-2.75,0.53
+364,"Abena Owusu",24,female,11.3,80.7,12.8,Brong-Ahafo,0,0,0,-0.55,0.15,-0.15
+365,"Ama Ibrahim",22,male,11.3,90.9,15.3,Eastern,0,0,0,0.48,0.14,-0.34
+366,"Fatima Frimpong",48,female,19.1,107.9,14.2,Brong-Ahafo,0,0,0,-0.12,0.33,0.64
+367,"Adwoa Asante",27,female,5.6,65.6,14.8,Central,1,0,1,-2.16,0.73,-4.46
+368,"Ama Asante",57,female,18.4,54.4,15.9,Eastern,1,0,0,-4.19,-0.51,0.31
+369,"Nathan Badu",30,male,12.7,96.2,14.7,Central,0,0,0,0.33,0.67,-0.39
+370,"Aaron Al-Hassan",25,male,11.7,86.8,13.8,Eastern,0,0,0,-0.16,-0.72,-0.48
+371,"Isaac Nkrumah",18,male,11.4,86.5,13.1,Ashanti,0,0,0,0.43,-0.44,0.35
+372,"Adwoa Gyasi",8,female,8.3,36.8,12.2,Central,1,0,0,-3.86,-0.55,0.45
+373,"Abena Darko",45,female,18.1,114.2,13.1,Greater Accra,0,1,0,0.37,-3.38,0.20
+374,"James Boateng",42,male,11.3,89.6,13.6,Northern,0,0,1,-1.55,-0.22,-3.19
+375,"Kwame Amoah",22,male,12.5,80.5,14.6,Central,0,0,0,-0.53,-0.70,0.55
+376,"Kweku Mensah",49,male,19.3,111.4,14.5,Ashanti,0,0,0,0.11,0.55,0.45
+377,"Mariam Owusu",2,female,4.8,51.5,14.0,Northern,0,0,0,-0.47,-0.75,0.31
+378,"Daniel Appiah",2,male,4.8,54.5,14.5,Northern,0,0,0,-0.20,0.57,-0.12
+379,"Kofi Al-Hassan",34,male,13.0,57.6,14.8,Northern,1,0,0,-3.27,0.33,-0.55
+380,"Akua Asare",39,female,14.9,48.7,15.4,Central,1,0,0,-4.18,-0.69,0.18
+381,"Fiifi Amoah",15,male,10.6,37.9,12.4,Brong-Ahafo,1,0,0,-4.34,0.27,0.25
+382,"Kweku Amoah",20,male,10.7,51.1,14.8,Central,1,0,0,-3.28,0.33,-0.45
+383,"David Nkrumah",52,male,18.6,69.5,14.8,Greater Accra,1,0,0,-3.07,0.14,0.16
+384,"Joseph Acheampong",13,male,9.7,71.4,13.1,Western,0,0,0,-0.59,-0.20,-0.11
+385,"Fanta Ibrahim",26,female,12.6,81.8,14.3,Central,0,0,0,-0.58,-0.08,0.52
+386,"Kojo Darko",39,male,13.6,90.7,15.1,Brong-Ahafo,0,0,0,-0.64,0.06,-0.67
+387,"Kofi Asare",30,male,9.0,75.1,12.7,Western,0,0,1,-1.56,0.42,-2.67
+388,"Caleb Owusu",25,male,6.6,62.0,14.6,Northern,1,0,1,-2.50,-0.46,-3.88
+389,"Ngozi Al-Hassan",20,female,10.7,79.3,14.6,Upper West,0,0,0,-0.34,0.26,0.04
+390,"Joshua Frimpong",60,male,18.2,105.0,15.4,Northern,0,0,0,-0.38,-0.41,-0.04
+391,"Abena Frimpong",5,female,6.6,59.9,12.8,Eastern,0,0,0,-0.40,0.22,-0.04
+392,"Akua Darko",13,female,9.2,47.1,14.9,Upper East,1,0,0,-3.10,-0.17,0.07
+393,"Abena Osei",5,female,4.1,43.9,14.4,Western,1,0,1,-2.52,0.63,-3.18
+394,"Kadiatou Appiah",27,female,12.1,52.9,13.3,Upper West,1,0,0,-3.35,-0.55,-0.02
+395,"Mariam Gyasi",36,female,14.7,101.3,13.1,Western,0,0,0,0.46,0.10,0.34
+396,"Aminata Owusu",29,female,6.2,60.8,14.5,Upper West,1,0,1,-2.71,0.44,-4.23
+397,"Moses Bonsu",32,male,13.5,55.9,13.8,Brong-Ahafo,1,0,0,-3.36,0.11,-0.09
+398,"Fatima Bonsu",44,female,17.5,117.3,14.3,Eastern,0,0,0,0.60,-0.31,-0.07
+399,"Nathan Adjei",17,male,10.1,53.2,13.8,Eastern,1,0,0,-2.87,-0.11,-0.46
+400,"Akua Badu",44,female,17.5,106.4,15.7,Greater Accra,0,0,0,-0.23,-0.48,-0.09
+401,"Afia Nkrumah",6,female,6.7,68.6,15.1,Northern,0,0,0,0.36,0.11,-0.69
+402,"Philip Boateng",35,male,13.2,61.1,13.9,Western,1,0,0,-3.01,-0.36,-0.56
+403,"Isaac Acheampong",54,male,17.7,106.0,15.8,Greater Accra,0,1,0,-0.30,-3.41,-0.27
+404,"Yaa Acheampong",36,female,14.0,89.8,15.6,Upper West,0,0,0,-0.54,0.56,-0.05
+405,"Isaac Amoah",40,male,15.4,52.0,15.5,Volta,1,0,0,-3.95,-0.47,0.27
+406,"Joshua Boateng",10,male,8.8,43.2,13.6,Upper West,1,0,0,-3.40,-0.68,-0.25
+407,"Isaac Osei",10,male,8.6,40.5,13.2,Central,1,0,0,-3.71,-0.04,-0.42
+408,"Abena Boateng",42,female,18.8,116.5,15.5,Ashanti,0,0,0,0.54,-0.41,0.50
+409,"Halima Bonsu",54,female,18.4,115.9,15.9,Western,0,1,0,0.50,-2.59,0.32
+410,"Yaa Appiah",55,female,16.2,109.1,15.4,Upper West,0,1,0,-0.02,-3.90,-0.71
+411,"Adwoa Appiah",2,female,4.8,35.0,13.0,Eastern,1,0,0,-4.44,0.07,0.43
+412,"Joseph Frimpong",1,male,4.3,50.7,13.3,Eastern,0,0,0,-0.34,-0.10,0.36
+413,"Mariam Nkrumah",3,female,4.9,52.9,12.4,Volta,0,1,0,-0.66,-4.32,-0.60
+414,"Abena Ibrahim",40,female,14.0,101.1,14.9,Volta,0,1,0,0.24,-4.42,-0.39
+415,"Fiifi Badu",16,male,10.1,37.7,15.0,Greater Accra,1,0,0,-4.41,-0.50,-0.29
+416,"Daniel Okafor",43,male,10.0,79.8,15.0,Upper East,1,0,1,-2.29,-0.59,-3.78
+417,"Moses Ofori",20,male,11.6,77.9,12.7,Upper East,0,1,0,-0.62,-3.02,0.17
+418,"Kojo Frimpong",42,male,18.1,102.0,15.1,Brong-Ahafo,0,0,0,-0.61,-0.25,-0.08
+419,"Fanta Owusu",47,female,12.2,77.6,14.6,Volta,1,0,1,-2.42,0.31,-2.60
+420,"Efua Asare",59,female,18.1,66.9,14.8,Central,1,0,0,-3.23,-0.01,0.21
+421,"Halima Owusu",6,female,7.6,65.0,13.0,Upper West,0,0,0,-0.08,-0.60,0.38
+422,"Afia Boateng",26,female,12.1,43.1,13.8,Upper West,1,0,0,-4.25,0.22,0.17
+423,"Ngozi Ibrahim",54,female,17.2,115.6,14.9,Upper East,0,1,0,0.47,-2.99,-0.25
+424,"Ngozi Ofori",23,female,11.1,54.0,13.2,Western,1,0,0,-3.07,0.37,-0.11
+425,"Efua Appiah",15,female,9.4,78.3,13.2,Volta,0,0,0,0.10,0.72,-0.17
+426,"Adwoa Gyasi",2,female,4.3,58.2,13.4,Eastern,0,1,0,0.54,-2.90,-0.48
+427,"Abena Ofori",34,female,14.1,90.4,15.6,Greater Accra,0,0,0,-0.30,0.61,0.32
+428,"Aminata Darko",2,female,4.9,35.0,13.5,Western,1,0,0,-3.22,0.09,0.56
+429,"Isaac Badu",32,male,13.9,95.4,13.8,Upper East,0,1,0,0.15,-4.27,0.14
+430,"Adwoa Darko",3,female,5.5,35.0,14.3,Greater Accra,1,0,0,-4.25,-0.63,0.42
+431,"Ama Osei",56,female,18.9,113.1,15.7,Volta,0,0,0,0.28,0.40,0.58
+432,"Fatima Bonsu",6,female,7.1,63.7,14.3,Western,0,0,0,-0.26,0.42,-0.23
+433,"Kofi Gyasi",39,male,15.7,66.0,13.6,Greater Accra,1,0,0,-2.74,0.38,0.51
+434,"Esi Adjei",4,female,2.8,48.5,14.9,Greater Accra,0,0,1,-1.62,0.58,-4.35
+435,"Fiifi Bonsu",3,male,3.8,39.5,14.0,Northern,1,0,1,-2.72,0.45,-2.65
+436,"Peter Asante",22,male,6.4,67.4,14.1,Western,0,0,1,-1.79,-0.59,-3.80
+437,"David Asare",26,male,13.4,82.7,12.6,Greater Accra,0,0,0,-0.61,0.58,0.56
+438,"Kwame Owusu",5,male,7.6,70.1,14.2,Volta,0,0,0,0.71,0.41,0.47
+439,"Nathan Asante",33,male,12.8,47.3,14.0,Central,1,0,0,-4.15,0.21,-0.57
+440,"Paul Acheampong",19,male,10.4,78.6,13.7,Central,0,1,0,-0.46,-4.40,-0.56
+441,"David Asante",58,male,19.6,114.2,13.4,Central,0,0,0,0.32,-0.22,0.61
+442,"Efua Al-Hassan",26,female,12.3,89.0,13.3,Central,0,0,0,0.10,0.41,0.26
+443,"Caleb Gyasi",29,male,13.1,94.2,15.1,Upper East,0,0,0,0.27,-0.55,-0.00
+444,"Abena Badu",21,female,10.5,76.3,13.9,Greater Accra,0,0,0,-0.72,-0.30,-0.23
+445,"Yaa Badu",53,female,18.1,63.1,15.5,Central,1,0,0,-3.53,0.00,0.20
+446,"Zainab Adjei",36,female,13.6,92.9,13.0,Ashanti,0,0,0,-0.27,-0.21,-0.30
+447,"Aaron Appiah",10,male,8.8,70.0,13.1,Ashanti,0,1,0,-0.34,-3.65,-0.23
+448,"Samuel Amoah",35,male,14.6,104.1,15.1,Volta,0,0,0,0.75,0.54,0.26
+449,"Adwoa Mensah",49,female,10.1,72.0,14.7,Brong-Ahafo,1,0,1,-2.85,-0.06,-3.56
+450,"Adwoa Okafor",45,female,17.6,114.9,13.3,Eastern,0,0,0,0.42,-0.34,-0.03
+451,"Ngozi Darko",44,female,9.4,86.3,15.2,Western,0,0,1,-1.76,0.04,-3.90
+452,"Peter Ofori",52,male,18.4,54.2,15.6,Upper West,1,0,0,-4.23,-0.30,0.03
+453,"Fiifi Badu",49,male,17.2,112.7,14.6,Brong-Ahafo,0,0,0,0.21,0.33,-0.50
+454,"Akua Gyasi",51,female,17.9,110.0,15.6,Upper West,0,0,0,0.05,-0.13,0.10
+455,"Akosua Al-Hassan",12,female,8.5,75.4,14.7,Ashanti,0,0,0,0.16,-0.61,-0.43
+456,"Abena Frimpong",19,female,10.1,76.4,14.2,Central,0,1,0,-0.53,-2.94,-0.22
+457,"Akua Okafor",5,female,6.2,37.0,14.6,Volta,1,0,0,-3.44,-0.19,-0.52
+458,"Ama Darko",31,female,13.6,99.9,14.3,Eastern,0,0,0,0.72,0.33,0.32
+459,"David Asante",35,male,13.3,52.7,14.6,Volta,1,0,0,-3.73,0.40,-0.47
+460,"Samuel Frimpong",24,male,11.8,85.7,15.0,Eastern,0,0,0,-0.20,0.07,-0.26
+461,"Zainab Amoah",21,female,11.2,90.1,13.2,Upper East,0,0,0,0.65,-0.56,0.28
+462,"Samuel Okafor",31,male,8.4,64.9,13.5,Northern,1,0,1,-2.53,0.42,-3.14
+463,"Emmanuel Boateng",27,male,12.0,93.9,14.9,Volta,0,1,0,0.38,-4.16,-0.48
+464,"Ngozi Ofori",50,female,19.2,102.5,13.2,Northern,0,0,0,-0.52,-0.57,0.72
+465,"Halima Mensah",6,female,7.4,70.0,14.3,Central,0,0,0,0.55,0.57,0.06
+466,"Kojo Appiah",24,male,5.8,70.9,13.3,Greater Accra,0,0,1,-1.60,0.18,-4.40
+467,"Peter Appiah",27,male,13.6,82.1,15.1,Greater Accra,0,0,0,-0.72,0.09,0.56
+468,"Emmanuel Darko",44,male,18.3,104.4,15.6,Upper West,0,0,0,-0.42,-0.25,-0.01
+469,"Adwoa Asare",34,female,12.8,63.7,13.3,Upper West,1,0,0,-2.67,-0.04,-0.47
+470,"Fatima Okafor",14,female,10.1,82.0,14.8,Upper East,0,0,0,0.63,-0.64,0.66
+471,"Kwame Asare",48,male,16.9,106.9,15.6,Ashanti,0,0,0,-0.23,-0.42,-0.66
+472,"James Appiah",16,male,10.1,49.7,12.7,Ashanti,1,0,0,-3.17,-0.50,-0.27
+473,"Kofi Appiah",47,male,11.7,75.3,14.3,Western,1,0,1,-2.63,0.48,-3.01
+474,"Emmanuel Darko",19,male,6.9,60.5,15.1,Volta,1,0,1,-2.27,0.51,-3.19
+475,"Adwoa Ibrahim",5,female,7.0,59.6,14.1,Eastern,0,0,0,-0.44,0.68,0.47
+476,"Esi Amoah",32,female,12.4,84.9,15.0,Upper East,0,0,0,-0.69,0.69,-0.54
+477,"Adwoa Okafor",17,female,10.7,40.7,14.7,Eastern,1,0,0,-4.08,0.45,0.60
+478,"Elijah Darko",40,male,13.9,57.1,15.2,Northern,1,0,0,-3.52,-0.63,-0.60
+479,"Amara Darko",20,female,9.8,56.2,14.7,Western,1,0,0,-2.67,-0.35,-0.64
+480,"Benjamin Gyasi",23,male,11.5,82.1,14.8,Western,0,0,0,-0.46,-0.52,-0.36
+481,"Esi Darko",58,female,11.5,88.8,15.7,Ashanti,0,0,1,-1.57,-0.30,-2.92
+482,"Benjamin Darko",58,male,19.3,56.3,13.9,Brong-Ahafo,1,0,0,-4.07,0.72,0.47
+483,"Abena Mensah",60,female,18.2,111.5,14.5,Greater Accra,0,1,0,0.16,-4.01,0.26
+484,"Yaa Osei",5,female,4.4,50.6,13.4,Western,0,0,1,-1.63,0.31,-2.79
+485,"Kweku Darko",15,male,9.9,78.1,14.9,Eastern,0,0,0,-0.10,0.47,-0.29
+486,"Efua Badu",10,female,8.5,67.3,13.9,Western,0,1,0,-0.46,-2.92,0.10
+487,"Abena Asare",38,female,13.3,101.1,13.4,Brong-Ahafo,0,1,0,0.34,-3.49,-0.61
+488,"Ngozi Adjei",4,female,4.1,46.3,14.7,Ashanti,0,0,1,-1.92,-0.13,-2.58
+489,"Adwoa Appiah",39,female,14.2,98.3,14.6,Central,0,0,0,0.05,-0.38,-0.20
+490,"Paul Darko",7,male,7.9,42.6,12.4,Volta,1,0,0,-3.19,0.74,-0.35
+491,"James Adjei",9,male,8.8,67.1,12.3,Western,0,1,0,-0.53,-3.70,0.00
+492,"Ama Darko",18,female,6.5,57.6,14.1,Volta,1,0,1,-2.39,-0.20,-3.00
+493,"Adwoa Mensah",56,female,18.0,69.6,16.1,Upper East,1,0,0,-3.03,-0.37,0.13
+494,"Fatima Frimpong",26,female,11.0,83.4,12.8,Upper West,0,0,0,-0.42,0.11,-0.65
+495,"Zainab Al-Hassan",26,female,7.5,67.9,14.4,Ashanti,0,0,1,-1.89,0.59,-3.07
+496,"Amara Gyasi",2,female,4.9,51.7,14.8,Central,0,1,0,-0.45,-3.07,0.66
+497,"Akua Nkrumah",49,female,11.3,82.9,15.7,Northern,1,0,1,-2.02,-0.28,-3.02
+498,"Emmanuel Gyasi",26,male,13.0,93.5,14.6,Western,0,0,0,0.40,-0.04,0.27
+499,"Ngozi Owusu",5,female,6.7,42.6,14.3,Upper East,1,0,0,-2.69,0.44,0.10
+500,"Adaeze Al-Hassan",10,female,8.1,71.3,14.4,Northern,0,0,0,0.00,0.73,-0.33
