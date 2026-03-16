@@ -1,0 +1,160 @@
+{
+  "scientific_references": [
+    {
+      "id": "anku_2024",
+      "doi": "10.1371/JOURNAL.PONE.0296625",
+      "title": "XGBoost للتنبؤ بسوء التغذية عند الأطفال في غانا",
+      "authors": "Anku et al.",
+      "journal": "PLoS ONE",
+      "year": 2024,
+      "accuracy": "98.0%",
+      "children": 8564,
+      "country": "Ghana",
+      "priority": "high",
+      "recommendations": [
+        "علاج بالحديد لفقر الدم",
+        "فيتامين A شهرياً",
+        "RUTF لمدة 12 أسبوع"
+      ],
+      "content": "XGBoost achieves 98.0% accuracy for predicting stunting in children under 5. Age, weight, height, sex, region, and ethnicity are key predictors."
+    },
+    {
+      "id": "bitew_2022",
+      "doi": "10.1017/S1368980021004262",
+      "title": "التنبؤ بسوء التغذية عند الأطفال في إثيوبيا باستخدام خوارزميات التعلم الآلي",
+      "authors": "Bitew et al.",
+      "journal": "Public Health Nutrition",
+      "year": 2022,
+      "accuracy": "xgbTree superior",
+      "children": 9471,
+      "country": "Ethiopia",
+      "priority": "high",
+      "recommendations": [
+        "تحسين الوصول لمياه الشرب",
+        "الأمن الغذائي",
+        "تنظيم الخصوبة"
+      ],
+      "content": "xgbTree algorithm shows superior prediction for childhood undernutrition in Ethiopia. Time to water source, anaemia history, child age >30 months, small birth size, and maternal underweight are important factors."
+    },
+    {
+      "id": "tadesse_2025",
+      "doi": "10.1371/JOURNAL.PONE.0322959",
+      "title": "التنبؤ بسوء التغذية الحاد لدى الأطفال في كينيا",
+      "authors": "Tadesse et al.",
+      "journal": "PLoS ONE",
+      "year": 2025,
+      "accuracy": "AUC 0.86",
+      "children": 80,
+      "country": "Kenya",
+      "priority": "high",
+      "recommendations": [
+        "مراقبة التنبؤ بالبيانات السريرية",
+        "دمج بيانات الأقمار الصناعية",
+        "تنبؤ على مستوى المناطق"
+      ],
+      "content": "Spatio-temporal ML model forecasts acute malnutrition at sub-county level using DHIS2 data and satellite imagery. Gradient Boosting achieves AUC 0.86 at 6-month horizon."
+    },
+    {
+      "id": "rahman_2021",
+      "doi": "10.1371/JOURNAL.PONE.0253172",
+      "title": "التنبؤ بالتقزم في بنغلاديش باستخدام التعلم الآلي",
+      "authors": "Rahman et al.",
+      "journal": "PLoS ONE",
+      "year": 2021,
+      "accuracy": "88.3%",
+      "children": 7079,
+      "country": "Bangladesh",
+      "priority": "medium",
+      "recommendations": [
+        "مؤشر كتلة الأم",
+        "التعليم",
+        "مستوى الثروة"
+      ],
+      "content": "ML models predict stunting with 88.3% accuracy using DHS data. Maternal BMI, education, wealth index, and child age are significant predictors."
+    },
+    {
+      "id": "yemen_wfp_2020",
+      "source": "WFP/UNICEF/FAO",
+      "title": "سوء التغذية في اليمن",
+      "year": 2020,
+      "children": 540000,
+      "severe_acute": "15.5% increase",
+      "country": "Yemen",
+      "priority": "critical",
+      "content": "540,000 children in Yemen face acute malnutrition. Highest rates since 2015. WHO reports 22% acute malnutrition."
+    },
+    {
+      "id": "lee_2020",
+      "doi": "10.1093/BIOINFORMATICS/BTZ682",
+      "title": "BioBERT: نموذج تمثيل اللغة الطبية",
+      "authors": "Lee et al.",
+      "journal": "Bioinformatics",
+      "year": 2020,
+      "application": "معالجة النصوص الطبية",
+      "content": "BioBERT pre-trained on biomedical corpora outperforms BERT on NER, relation extraction, and QA tasks."
+    }
+  ],
+  "treatment_guidelines": [
+    {
+      "condition": "severe_stunting",
+      "condition_ar": "التقزم الشديد",
+      "who_protocol": "F-75 للأسابيع الأولى، ثم F-100 أو RUTF",
+      "duration": "12 أسبوع",
+      "micronutrients": ["فيتامين A", "الحديد", "الزنك", "حمض الفوليك"],
+      "follow_up": "أسبوعي",
+      "ref": "WHO Guidelines 2023"
+    },
+    {
+      "condition": "severe_wasting",
+      "condition_ar": "الهزال الشديد",
+      "who_protocol": "F-75 للاستقرار (1-2 أسبوع)، ثم RUTF",
+      "duration": "8-12 أسبوع",
+      "micronutrients": ["فيتامين A", "الحديد", "الزنك"],
+      "follow_up": "أسبوعي",
+      "ref": "WHO Guidelines 2023"
+    },
+    {
+      "condition": "underweight",
+      "condition_ar": "نقص الوزن",
+      "who_protocol": "برامج التغذية العلاجية + مراقبة النمو",
+      "duration": "12-24 أسبوع",
+      "micronutrients": ["فيتامين A", "الحديد"],
+      "follow_up": "شهري",
+      "ref": "WHO Guidelines 2023"
+    },
+    {
+      "condition": "moderate",
+      "condition_ar": "سوء تغذية متوسط",
+      "who_protocol": "RUTF للمرضى الخارجيين + تغذية تكميلية",
+      "duration": "8-12 أسبوع",
+      "micronutrients": ["فيتامين A", "الزنك"],
+      "follow_up": "شهري",
+      "ref": "UNICEF Guidelines 2024"
+    }
+  ],
+  "features_derived_from": [
+    "WHO Child Growth Standards",
+    "DHS Nutrition Indicators",
+    "UNICEF Emergency Nutrition",
+    "Ethiopia EDHS 2016",
+    "Ghana DHS Survey",
+    "Kenya DHIS2 Data"
+  ],
+  "ml_models_reference": [
+    {
+      "model": "XGBoost",
+      "stunting_accuracy": "98.0%",
+      "wasting_accuracy": "98.2%",
+      "underweight_accuracy": "97.9%",
+      "ref": "Anku et al., PLoS ONE 2024"
+    },
+    {
+      "model": "BioBERTMobile",
+      "application": "معالجة النصوص الطبية",
+      "size": "أصغر بـ 4.3x من BERT",
+      "speed": "أسرع بـ 5.5x من BERT",
+      "ref": "Lee et al., Bioinformatics 2020"
+    }
+    }
+  ]
+}
