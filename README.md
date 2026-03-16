@@ -202,3 +202,43 @@ MIT License — See LICENSE file for details.
 ## Contact
 
 For support and contributions, please open an issue on the project repository.
+
+---
+
+## Advanced AI Features (v2.0)
+
+Nizam now includes advanced AI technologies for intelligent decision support:
+
+### RAG (Retrieval-Augmented Generation)
+- **Purpose**: Provides scientific evidence and treatment recommendations for each prediction.
+- **Technology**: `sentence-transformers` with `FAISS` index for fast retrieval.
+- **Knowledge Base**: Over 100 peer-reviewed research papers on child malnutrition (2020-2026).
+- **Supported Languages**: Arabic and English (multilingual embeddings).
+- **Output**: Relevant scientific papers, WHO treatment protocols, and evidence-based recommendations.
+
+### BioBERTMobile
+- **Purpose**: Analyzes medical text (clinical notes, patient reports) to extract medical entities.
+- **Technology**: `MobileBERT` from Google - optimized for mobile/edge deployment.
+- **Capabilities**:
+  - Named Entity Recognition (diseases, symptoms, treatments)
+  - Medical text classification
+  - Lightweight inference for low-resource devices
+- **Integration**: Works alongside ML models for holistic child health assessment.
+
+### EnhancedNizam Pipeline
+- **Integration**: Combines XGBoost ML predictions + RAG evidence + BioBERT medical analysis.
+- **API Endpoint**: `GET /predict/enhanced`
+- **Output**: Comprehensive report with ML prediction, scientific evidence, and medical entities.
+
+### New Files
+| File | Description |
+|------|-------------|
+| `rag_system.py` | RAG system for medical knowledge retrieval |
+| `biobert_mobile.py` | MobileBERT for medical text analysis |
+| `knowledge_base.json` | Scientific papers and treatment guidelines |
+| `enhanced_prediction_api.py` | Enhanced prediction API with RAG + BioBERT |
+
+### Updated Requirements
+Add these packages: `sentence-transformers`, `faiss-cpu`, `transformers`, `torch`
+
+> **Research Foundation**: Built on peer-reviewed studies including XGBoost achieving 98% accuracy for malnutrition prediction (Anku et al., PLoS ONE, 2024).
