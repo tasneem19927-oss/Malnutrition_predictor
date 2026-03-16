@@ -40,6 +40,9 @@ from pydantic import BaseModel, Field, validator
 import uvicorn
 
 from xgboost_model import NizamPredictor, PredictionResult
+from rag_system import NizamRAG
+from biobert_mobile import BioBERTMobile
+from enhanced_prediction_api import EnhancedPredictionAPI
 
 # Configure logging
 logging.basicConfig(
@@ -217,6 +220,12 @@ async def startup_event():
     try:
         predictor = NizamPredictor(model_dir=MODEL_DIR)
         predictor.load_all()
+                try:
+            enhanced_api = EnhancedPredictionAPI()
+            logger.info("Enhanced prediction services (RAG + BioBERT) loaded.")
+        except Exception as e:
+            logger.warning(f"Enhanced prediction services failed to load: {e}")
+
         logger.info("All models loaded successfully.")
     except Exception as e:
         logger.error(f"Failed to load models: {e}")
@@ -394,7 +403,8 @@ async def get_stats():
     }
 
 
-@app.get("/", tags=["System"])
+416
+=["System"])
 async def root():
     """API root - returns basic information."""
     return {
@@ -410,6 +420,30 @@ async def root():
         }
     }
 
+@app.get("/predict/enhanced", tags=["Enhanced Prediction"])
+async def predict_enhanced():
+    """
+    Enhanced prediction endpoint using RAG + BioBERT.
+    Returns ML prediction + scientific evidence + medical entities.
+    """
+    global enhanced_api
+    if enhanced_api is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Enhanced prediction services not loaded."
+        )
+    try:
+        result = await enhanced_api.get_prediction_summary()
+        return {
+            "status": "success",
+            "data": result,
+            "components": ["ml_prediction", "rag_evidence", "medical_entities"]
+        }
+    except Exception as e:
+        logger.error(f"Enhanced prediction error: {e}")
+        raise HTTPException(status_code=500, detail=f"Enhanced prediction failed: {str(e)}")
+
+enhanced_api: Optional[EnhancedPredictionAPI] = None
 
 # =====================================================================
 # Run server
