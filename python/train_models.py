@@ -21,6 +21,8 @@ import logging
 import argparse
 import warnings
 from pathlib import Path
+from rag_system import NizamRAG
+from biobert_mobile import BioBERTMobile
 
 import numpy as np
 import pandas as pd
@@ -320,3 +322,74 @@ if __name__ == "__main__":
     # Fix missing Dict import
     from typing import Dict
     main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+()
+
+
+# ==============================================================================
+# ENHANCED NIZAM CLASS - RAG + BioBERT Integration
+# ==============================================================================
+
+class EnhancedNizam:
+    def __init__(self):
+        self.ml_models = self.load_ml_models()
+        self.rag_system = NizamRAG()
+        self.biobert_mobile = BioBERTMobile()
+
+    def load_ml_models(self):
+        loaded_models = {}
+        for target in ["stunting", "wasting", "underweight"]:
+            loaded_models[target] = ModelWrapper(model=None, name=target, features=[])  # Placeholder
+        return loaded_models
+
+    def full_prediction_pipeline(self, child_data):
+        ml_result = self.ml_models["stunting"].predict(child_data) if self.ml_models.get("stunting") else {}
+        evidence = self.rag_system.query(ml_result, child_data)
+        entities = None
+        if "notes" in child_data:
+            entities = self.biobert_mobile.extract_medical_entities(child_data["notes"])
+        return {
+            "prediction": ml_result,
+            "evidence": evidence,
+            "entities": entities
+        }
+
+
