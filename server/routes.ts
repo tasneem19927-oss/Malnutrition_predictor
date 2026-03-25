@@ -1,10 +1,17 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { predictionInputSchema } from "@shared/schema";
 import { z } from "zod";
+import https from "https";
+import http from "http";
 
-// WHO reference data for z-score approximation
+// Configuration for Python FastAPI backend
+const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8001";
+const PYTHON_API_TIMEOUT = parseInt(process.env.PYTHON_API_TIMEOUT || "30000");
+const FALLBACK_SIMULATION = process.env.FALLBACK_SIMULATION !== "false";
+
+// WHO reference data for z-score approximation (fallback)
 const WHO_HAZ_MEDIAN: Record<number, Record<string, number>> = {
   0: { male: 49.9, female: 49.1 },
   6: { male: 67.6, female: 65.7 },
@@ -32,270 +39,379 @@ function interpolate(
   ageMonths: number,
   sex: string
 ): number {
-  const ages = Object.keys(table).map(Number).sort((a, b) => a - b);
-  const lower = Math.max(...ages.filter(a => a <= ageMonths));
-  const upper = Math.min(...ages.filter(a => a >= ageMonths));
+  const ages = Object.keys(table)
+    .map(Number)
+    .sort((a, b) => a - b);
+  const lower = Math.max(...ages.filter((a) => a <= ageMonths));
+  const upper = Math.min(...ages.filter((a) => a >= ageMonths));
   if (lower === upper) return table[lower][sex];
   const t = (ageMonths - lower) / (upper - lower);
-  return table[lower][sex] * (1 - t) + table[upper][sex] * t;
+  return table[lower][sex] + t * (table[upper][sex] - table[lower][sex]);
 }
 
-function computeZScores(
-  ageMonths: number,
-  sex: string,
-  weightKg: number,
-  heightCm: number,
-  muacCm: number
-) {
-  const hMedian = interpolate(WHO_HAZ_MEDIAN, ageMonths, sex);
-  const wMedian = interpolate(WHO_WAZ_MEDIAN, ageMonths, sex);
-  const hSD = hMedian * 0.045;
-  const wSD = wMedian * 0.13;
+// Fallback z-score simulation (when Python API is unavailable)
+function simulatePrediction(input: {
+  weight_kg?: number;
+  height_cm?: number;
+  muac_cm?: number;
+  age_months: number;
+  sex: string;
+  region?: string;
+}): {
+  stunting_risk: string;
+  wasting_risk: string;
+  underweight_risk: string;
+  overall_risk: string;
+  stunting_score: number;
+  wasting_score: number;
+  underweight_score: number;
+  overall_score: number;
+  z_scores: {
+    haz: number;
+    waz: number;
+    whz?: number;
+  };
+  simulation: boolean;
+} {
+  const haz_median = interpolate(WHO_HAZ_MEDIAN, input.age_months, input.sex);
+  const waz_median = interpolate(WHO_WAZ_MEDIAN, input.age_months, input.sex);
 
-  const haz = (heightCm - hMedian) / hSD;
-  const waz = (weightKg - wMedian) / wSD;
-  const expectedWhWeight = 0.0006 * Math.pow(heightCm, 2.1) * (sex === "female" ? 0.9 : 1.0);
-  const whSD = expectedWhWeight * 0.15;
-  const whz = (weightKg - expectedWhWeight) / whSD;
-  const muacMedian = 14.5 + ageMonths * 0.035;
-  const muacz = (muacCm - muacMedian) / (muacMedian * 0.08);
+  const haz = input.height_cm
+    ? (input.height_cm - haz_median) / 2.5
+    : -2.0;
+  const waz = input.weight_kg
+    ? (input.weight_kg - waz_median) / 1.2
+    : -2.0;
+  const whz =
+    input.height_cm && input.weight_kg
+      ? (input.weight_kg - waz_median) / 1.2
+      : undefined;
+
+  const stunting_score = Math.min(1, Math.max(0, -haz / 2));
+  const wasting_score = Math.min(1, Math.max(0, -waz / 2));
+  const underweight_score = Math.min(1, Math.max(0, (waz + haz) / 4));
+
+  const overall_score =
+    (stunting_score * 0.4 + wasting_score * 0.4 + underweight_score * 0.2);
+
+  const risk = (score: number): string =>
+    score >= 0.75 ? "critical" : score >= 0.5 ? "high" : score >= 0.25 ? "medium" : "low";
 
   return {
-    haz: Math.round(haz * 100) / 100,
-    waz: Math.round(waz * 100) / 100,
-    whz: Math.round(whz * 100) / 100,
-    muacz: Math.round(muacz * 100) / 100,
+    stunting_risk: risk(stunting_score),
+    wasting_risk: risk(wasting_score),
+    underweight_risk: risk(underweight_score),
+    overall_risk: risk(overall_score),
+    stunting_score: Math.round(stunting_score * 100) / 100,
+    wasting_score: Math.round(wasting_score * 100) / 100,
+    underweight_score: Math.round(underweight_score * 100) / 100,
+    overall_score: Math.round(overall_score * 100) / 100,
+    z_scores: { haz: Math.round(haz * 100) / 100, waz: Math.round(waz * 100) / 100, whz: whz ? Math.round(whz * 100) / 100 : undefined },
+    simulation: true,
   };
 }
 
-// XGBoost-simulated probability engine using weighted feature scoring
-// Mirrors the Python model's feature engineering logic
-function predictMalnutritionProb(
-  target: "stunting" | "wasting" | "underweight",
-  ageMonths: number,
-  sex: string,
-  weightKg: number,
-  heightCm: number,
-  muacCm: number
-): number {
-  const zScores = computeZScores(ageMonths, sex, weightKg, heightCm, muacCm);
-  const bmi = weightKg / Math.pow(heightCm / 100, 2);
-  const weightHeightRatio = weightKg / heightCm;
-  const muacHeightRatio = muacCm / heightCm;
+// Client function to call Python FastAPI
+async function callPythonAPI<T>(
+  endpoint: string,
+  method: string = "GET",
+  body?: unknown
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const url = new URL(endpoint, PYTHON_API_URL);
+    const options = {
+      hostname: url.hostname,
+      port: url.port || 8001,
+      path: url.pathname + url.search,
+      method: method,
+      timeout: PYTHON_API_TIMEOUT,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    };
 
-  let logit: number;
-
-  if (target === "stunting") {
-    // HAZ is the primary predictor of stunting
-    logit = -1.8
-      + (-0.85) * zScores.haz
-      + (-0.25) * zScores.waz
-      + 0.15 * (ageMonths / 12)
-      + (-0.10) * (sex === "male" ? 1 : 0)
-      + (-1.2) * muacHeightRatio
-      + 0.05 * (ageMonths * weightKg / 100);
-  } else if (target === "wasting") {
-    // WHZ and MUAC are primary predictors
-    logit = -2.1
-      + (-0.75) * zScores.whz
-      + (-0.40) * zScores.muacz
-      + (-0.20) * zScores.waz
-      + 0.08 * (ageMonths / 12)
-      + (-2.5) * weightHeightRatio
-      + 0.10 * (sex === "male" ? 1 : 0);
-  } else {
-    // underweight
-    logit = -2.0
-      + (-0.90) * zScores.waz
-      + (-0.30) * zScores.haz
-      + (-0.20) * zScores.whz
-      + 0.05 * (ageMonths / 12)
-      + (-1.8) * (bmi / 20);
-  }
-
-  // Add slight noise to simulate model variability
-  logit += (Math.random() - 0.5) * 0.15;
-
-  // Sigmoid function
-  const prob = 1 / (1 + Math.exp(-logit));
-  return Math.min(0.99, Math.max(0.01, Math.round(prob * 10000) / 10000));
-}
-
-function classifyRisk(probability: number): string {
-  if (probability < 0.20) return "low";
-  if (probability < 0.45) return "moderate";
-  if (probability < 0.70) return "high";
-  return "critical";
-}
-
-function getOverallRisk(stunting: string, wasting: string, underweight: string): string {
-  const order: Record<string, number> = { low: 0, moderate: 1, high: 2, critical: 3 };
-  const reverse: Record<number, string> = { 0: "low", 1: "moderate", 2: "high", 3: "critical" };
-  const max = Math.max(order[stunting], order[wasting], order[underweight]);
-  return reverse[max];
-}
-
-// Seed some sample predictions on startup
-async function seedPredictions() {
-  const existing = await storage.getPredictions();
-  if (existing.length > 0) return;
-
-  const sampleChildren = [
-    { childName: "Amara Osei", ageMonths: 18, sex: "female", weightKg: 8.2, heightCm: 76.5, muacCm: 12.8, region: "Central" },
-    { childName: "Kwame Mensah", ageMonths: 24, sex: "male", weightKg: 11.5, heightCm: 86.0, muacCm: 14.5, region: "Northern" },
-    { childName: "Fatima Ibrahim", ageMonths: 36, sex: "female", weightKg: 10.2, heightCm: 88.5, muacCm: 12.2, region: "Eastern" },
-    { childName: "Emmanuel Boateng", ageMonths: 12, sex: "male", weightKg: 9.8, heightCm: 75.0, muacCm: 14.8, region: "Western" },
-    { childName: "Zainab Al-Hassan", ageMonths: 48, sex: "female", weightKg: 14.0, heightCm: 99.0, muacCm: 15.2, region: "Central" },
-    { childName: "Kofi Acheampong", ageMonths: 6, sex: "male", weightKg: 6.5, heightCm: 64.0, muacCm: 13.5, region: "Ashanti" },
-    { childName: "Adaeze Okafor", ageMonths: 30, sex: "female", weightKg: 9.8, heightCm: 82.0, muacCm: 11.8, region: "Southern" },
-    { childName: "Samuel Appiah", ageMonths: 9, sex: "male", weightKg: 7.2, heightCm: 68.0, muacCm: 11.5, region: "Volta" },
-  ];
-
-  for (const child of sampleChildren) {
-    const stuntingProb = predictMalnutritionProb("stunting", child.ageMonths, child.sex, child.weightKg, child.heightCm, child.muacCm);
-    const wastingProb = predictMalnutritionProb("wasting", child.ageMonths, child.sex, child.weightKg, child.heightCm, child.muacCm);
-    const underweightProb = predictMalnutritionProb("underweight", child.ageMonths, child.sex, child.weightKg, child.heightCm, child.muacCm);
-    const stuntingRisk = classifyRisk(stuntingProb);
-    const wastingRisk = classifyRisk(wastingProb);
-    const underweightRisk = classifyRisk(underweightProb);
-    const overallRisk = getOverallRisk(stuntingRisk, wastingRisk, underweightRisk);
-
-    await storage.createPrediction({
-      childName: child.childName,
-      ageMonths: child.ageMonths,
-      sex: child.sex,
-      weightKg: child.weightKg,
-      heightCm: child.heightCm,
-      muacCm: child.muacCm,
-      region: child.region,
-      stuntingRisk,
-      wastingRisk,
-      underweightRisk,
-      stuntingProb,
-      wastingProb,
-      underweightProb,
-      overallRisk,
-      notes: null,
+    const protocol = url.protocol === "https:" ? https : http;
+    const req = protocol.request(options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(data);
+          resolve(parsed);
+        } catch {
+          resolve(data as T);
+        }
+      });
     });
+
+    req.on("error", reject);
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("Python API timeout"));
+    });
+
+    if (body) {
+      req.write(JSON.stringify(body));
+    }
+    req.end();
+  });
+}
+
+// Health check with Python API status
+async function checkPythonAPI(): Promise<{ healthy: boolean; response_time_ms: number }> {
+  const start = Date.now();
+  try {
+    const result = await callPythonAPI<{ status: string }>("/health");
+    return { healthy: result.status === "healthy", response_time_ms: Date.now() - start };
+  } catch {
+    return { healthy: false, response_time_ms: Date.now() - start };
   }
 }
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
-  await seedPredictions();
-
-  // GET all predictions
-  app.get("/api/predictions", async (req, res) => {
-    try {
-      const predictions = await storage.getPredictions();
-      res.json(predictions);
-    } catch (err) {
-      res.status(500).json({ error: "Failed to fetch predictions" });
-    }
+// Main app setup
+export function registerRoutes(app: Express, server: Server) {
+  app.use("/api/predict", async (req: Request, res: Response, next: NextFunction) => {
+    res.setHeader("X-Powered-By", "Nizam-Predictor");
+    next();
   });
 
-  // GET prediction stats
-  app.get("/api/predictions/stats", async (req, res) => {
-    try {
-      const stats = await storage.getPredictionStats();
-      res.json(stats);
-    } catch (err) {
-      res.status(500).json({ error: "Failed to fetch stats" });
-    }
-  });
-
-  // GET single prediction
-  app.get("/api/predictions/:id", async (req, res) => {
-    try {
-      const prediction = await storage.getPrediction(req.params.id);
-      if (!prediction) {
-        return res.status(404).json({ error: "Prediction not found" });
-      }
-      res.json(prediction);
-    } catch (err) {
-      res.status(500).json({ error: "Failed to fetch prediction" });
-    }
-  });
-
-  // POST create prediction (run ML inference)
-  app.post("/api/predictions", async (req, res) => {
+  // Enhanced prediction endpoint - proxies to Python FastAPI
+  app.post("/api/predict/enhanced", async (req: Request, res: Response) => {
+    const start = Date.now();
     try {
       const parsed = predictionInputSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
+        return res.status(400).json({
+          error: "Invalid input",
+          details: parsed.error.issues,
+        });
       }
 
-      const { childName, ageMonths, sex, weightKg, heightCm, muacCm, region, notes } = parsed.data;
+      const input = parsed.data;
 
-      const stuntingProb = predictMalnutritionProb("stunting", ageMonths, sex, weightKg, heightCm, muacCm);
-      const wastingProb = predictMalnutritionProb("wasting", ageMonths, sex, weightKg, heightCm, muacCm);
-      const underweightProb = predictMalnutritionProb("underweight", ageMonths, sex, weightKg, heightCm, muacCm);
+      // Try Python FastAPI first
+      if (FALLBACK_SIMULATION) {
+        try {
+          const pythonPayload = {
+            weight_kg: input.weight_kg,
+            height_cm: input.height_cm,
+            muac_cm: input.muac_cm,
+            age_months: input.age_months,
+            sex: input.sex,
+            region: input.region || "general",
+            clinical_notes: input.clinical_notes || "",
+            language: input.language || "ar",
+          };
 
-      const stuntingRisk = classifyRisk(stuntingProb);
-      const wastingRisk = classifyRisk(wastingProb);
-      const underweightRisk = classifyRisk(underweightProb);
-      const overallRisk = getOverallRisk(stuntingRisk, wastingRisk, underweightRisk);
+          const prediction = await callPythonAPI<any>(
+            "/predict/enhanced",
+            "POST",
+            pythonPayload
+          );
 
-      const prediction = await storage.createPrediction({
-        childName,
-        ageMonths,
-        sex,
-        weightKg,
-        heightCm,
-        muacCm,
-        region,
-        stuntingRisk,
-        wastingRisk,
-        underweightRisk,
-        stuntingProb,
-        wastingProb,
-        underweightProb,
-        overallRisk,
-        notes: notes ?? null,
+          const mlPrediction = prediction.ml_prediction || {};
+          const enhancedResponse = {
+            prediction_id: prediction.prediction_id || `pred_${Date.now()}`,
+            ml_prediction: {
+              stunting_risk: mlPrediction.stunting_risk || "low",
+              wasting_risk: mlPrediction.wasting_risk || "low",
+              underweight_risk: mlPrediction.underweight_risk || "low",
+              overall_risk: mlPrediction.overall_risk || "low",
+              stunting_score: mlPrediction.stunting_score || 0,
+              wasting_score: mlPrediction.wasting_score || 0,
+              underweight_score: mlPrediction.underweight_score || 0,
+              overall_score: mlPrediction.overall_score || 0,
+              prediction_method: mlPrediction.prediction_method || "xgboost",
+            },
+            medical_entities: prediction.medical_entities || [],
+            entity_summary: prediction.entity_summary || "",
+            scientific_evidence: prediction.scientific_evidence || [],
+            evidence_summary: prediction.evidence_summary || "",
+            treatment_plan: prediction.treatment_plan || {},
+            risk_summary: prediction.risk_summary || "",
+            confidence: prediction.confidence || 0,
+            language: input.language || "ar",
+            processing_time_ms: prediction.processing_time_ms || Date.now() - start,
+            simulation: false,
+          };
+
+          return res.json(enhancedResponse);
+        } catch (pythonError: any) {
+          console.warn("Python API unavailable, falling back to simulation:", pythonError.message);
+        }
+      }
+
+      // Fallback to z-score simulation
+      const simulated = simulatePrediction({
+        weight_kg: input.weight_kg,
+        height_cm: input.height_cm,
+        muac_cm: input.muac_cm,
+        age_months: input.age_months,
+        sex: input.sex,
+        region: input.region,
       });
 
-      res.status(201).json(prediction);
-    } catch (err) {
-      res.status(500).json({ error: "Failed to create prediction" });
+      const fallbackResponse = {
+        prediction_id: `sim_${Date.now()}`,
+        ml_prediction: simulated,
+        medical_entities: [],
+        entity_summary: "",
+        scientific_evidence: [],
+        evidence_summary: "",
+        treatment_plan: { immediate_actions: [], nutritional_interventions: [], medical_interventions: [], follow_up: [], prevention: [] },
+        risk_summary: "تنبؤ بالمحاكاة - النظام الذكي غير متاح",
+        confidence: simulated.overall_score,
+        language: input.language || "ar",
+        processing_time_ms: Date.now() - start,
+        simulation: true,
+      };
+
+      return res.json(fallbackResponse);
+    } catch (error: any) {
+      console.error("Prediction error:", error);
+      return res.status(500).json({ error: "Internal server error", details: error.message });
     }
   });
 
-  // DELETE prediction
-  app.delete("/api/predictions/:id", async (req, res) => {
+  // System health check - includes Python API status
+  app.get("/api/health", async (_req: Request, res: Response) => {
+    const [pythonHealth, dbStatus] = await Promise.all([
+      checkPythonAPI(),
+      storage.getStats().then(() => ({ healthy: true })).catch(() => ({ healthy: false })),
+    ]);
+
+    res.json({
+      status: pythonHealth.healthy ? "healthy" : "degraded",
+      components: {
+        node_server: true,
+        python_api: pythonHealth.healthy,
+        database: dbStatus.healthy,
+      },
+      python_api_response_time_ms: pythonHealth.response_time_ms,
+      python_api_url: PYTHON_API_URL,
+      fallback_simulation_enabled: FALLBACK_SIMULATION,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  // Proxy to Python FastAPI guidelines endpoint
+  app.get("/api/guidelines", async (_req: Request, res: Response) => {
     try {
-      const deleted = await storage.deletePrediction(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ error: "Prediction not found" });
-      }
-      res.status(200).json({ success: true });
-    } catch (err) {
-      res.status(500).json({ error: "Failed to delete prediction" });
+      const guidelines = await callPythonAPI<any>("/guidelines");
+      return res.json(guidelines);
+    } catch {
+      return res.json({ guidelines: [], protocols: [], micronutrients: [] });
     }
   });
 
-  // GET WHO z-scores for a child
-  app.post("/api/zscores", async (req, res) => {
+  // Proxy to Python FastAPI entity types endpoint
+  app.get("/api/entities/types", async (_req: Request, res: Response) => {
     try {
-      const schema = z.object({
-        ageMonths: z.number().int().min(0).max(60),
-        sex: z.enum(["male", "female"]),
-        weightKg: z.number().min(0.5).max(30),
-        heightCm: z.number().min(30).max(130),
-        muacCm: z.number().min(6).max(25),
+      const entityTypes = await callPythonAPI<any>("/entities/types");
+      return res.json(entityTypes);
+    } catch {
+      return res.json({ english: [], arabic: [] });
+    }
+  });
+
+  // Text analysis endpoint - proxies to BioBERT
+  app.post("/api/analyze/text", async (req: Request, res: Response) => {
+    const { text, language } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: "Text is required" });
+    }
+    try {
+      const url = new URL("/analyze/text", PYTHON_API_URL);
+      url.searchParams.append("text", text);
+      if (language) url.searchParams.append("language", language);
+
+      const result = await callPythonAPI<any>(url.pathname + url.search);
+      return res.json(result);
+    } catch {
+      return res.json({ entities: [], summary: "BioBERT غير متاح" });
+    }
+  });
+
+  // Text classification endpoint - proxies to BioBERT
+  app.post("/api/classify/text", async (req: Request, res: Response) => {
+    const { text, language } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: "Text is required" });
+    }
+    try {
+      const url = new URL("/classify/text", PYTHON_API_URL);
+      url.searchParams.append("text", text);
+      if (language) url.searchParams.append("language", language);
+
+      const result = await callPythonAPI<any>(url.pathname + url.search);
+      return res.json(result);
+    } catch {
+      return res.json({ classification: "unknown", confidence: 0 });
+    }
+  });
+
+  // Batch prediction endpoint - proxies to Python
+  app.post("/api/predict/batch", async (req: Request, res: Response) => {
+    const { children } = req.body;
+    if (!Array.isArray(children) || children.length === 0) {
+      return res.status(400).json({ error: "Children array is required" });
+    }
+
+    try {
+      const results = await callPythonAPI<any[]>("/predict/enhanced/batch", "POST", children);
+      return res.json({ results, count: results.length });
+    } catch (error: any) {
+      console.warn("Batch Python API failed, falling back:", error.message);
+      // Fallback: process individually with simulation
+      const simulated = children.map((c: any) => simulatePrediction({
+        weight_kg: c.weight_kg,
+        height_cm: c.height_cm,
+        muac_cm: c.muac_cm,
+        age_months: c.age_months,
+        sex: c.sex,
+        region: c.region,
+      }));
+      return res.json({ results: simulated, count: simulated.length, simulation: true });
+    }
+  });
+
+  // Statistics endpoint - returns DB stats
+  app.get("/api/stats", async (_req: Request, res: Response) => {
+    try {
+      const stats = await storage.getStats();
+      const pythonHealth = await checkPythonAPI();
+      return res.json({
+        ...stats,
+        python_api_healthy: pythonHealth.healthy,
+        server_started: new Date().toISOString(),
       });
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Validation failed" });
-      }
-      const { ageMonths, sex, weightKg, heightCm, muacCm } = parsed.data;
-      const zScores = computeZScores(ageMonths, sex, weightKg, heightCm, muacCm);
-      res.json(zScores);
-    } catch (err) {
-      res.status(500).json({ error: "Failed to compute z-scores" });
+    } catch (error: any) {
+      return res.json({ total_predictions: 0, python_api_healthy: false, error: error.message });
     }
   });
 
-  return httpServer;
+  // Legacy /predict endpoint for backward compatibility
+  app.post("/api/predict", async (req: Request, res: Response) => {
+    // Validate and redirect to enhanced endpoint
+    const parsed = predictionInputSchema.safeParse(req.body);
+    if (!parsed.success) {
+          // For backward compatibility, call the same handler as /predict/enhanced
+    // This is a simpler wrapper without the full enhanced features
+    const fallback = simulatePrediction(parsed.data);
+    return res.json({
+      prediction_id: `legacy_${Date.now()}`,
+      ml_prediction: fallback,
+      simulation: true,
+      language: parsed.data.language || "ar",
+    });
+
+// Helper for internal use - simulates prediction without HTTP
+export const simulatePredictionHelper = simulatePrediction;
+    }
+
+    // Call enhanced internally
+    const enhancedReq = { body: parsed.data } as Request;
+      // Note: Legacy endpoint - use /api/predict/enhanced for new implementations
+  });
 }
