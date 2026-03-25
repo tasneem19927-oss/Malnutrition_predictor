@@ -355,7 +355,7 @@ const sessions = new Map<string, Session>();
 
 // Session middleware
 function getSession(req: Request): Session | null {
-  const sessionId = req.headers.get('authorization')?.replace('Bearer ', '');
+  const sessionId = req.header('authorization')?.replace('Bearer ', '');
   if (!sessionId) return null;
   const session = sessions.get(sessionId);
   if (!session) return null;
@@ -433,7 +433,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
 
 // Logout
 app.post("/api/auth/logout", async (req: Request, res: Response) => {
-  const sessionId = req.headers.get('authorization')?.replace('Bearer ', '');
+  const sessionId = req.header('authorization')?.replace('Bearer ', '');
   if (sessionId) {
     sessions.delete(sessionId);
   }
