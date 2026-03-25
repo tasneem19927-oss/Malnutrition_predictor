@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
@@ -41,18 +41,15 @@ import {
   Activity,
   Users,
   AlertCircle,
-  CheckCircle,
   AlertTriangle,
   LogOut,
   BarChart3,
   MapPin,
-  Phone,
   Calendar,
   Edit,
   Trash2,
   Eye,
   Download,
-  Filter,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -66,7 +63,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-// Types
 interface ChildAssessment {
   id: string;
   childName: string;
@@ -83,6 +79,10 @@ interface ChildAssessment {
   assessedBy: string;
   assessmentDate: string;
   followUpDate?: string;
+  zScore?: number;
+  waz?: number;
+  haz?: number;
+  wfl?: number;
 }
 
 interface PatientInfo {
@@ -99,21 +99,33 @@ interface PatientInfo {
   riskLevel: string;
 }
 
+interface HealthDashboardStats {
+  totalAssessments: number;
+  severeCases: number;
+  moderateCases: number;
+  followUpNeeded: number;
+  newAssessments: number;
+  stuntingCount: number;
+  wastingCount: number;
+  byGovernorate: Record<string, number>;
+}
+
+const governorates = ['تعز', 'عدن', 'الحديدة', 'إب', 'صنعاء', 'صعدة', 'حجة', 'المحويت', 'الضالع', 'لحج', 'أبين', 'شبوة', 'حضرموت', 'المهرة', 'عمران', 'ذمار', 'البيضاء', 'ريمة'];
+
 const HealthWorkerDashboard = () => {
   const { user, logout } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGovernorate, setSelectedGovernorate] = useState('all');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
   const [isViewDetailOpen, setIsViewDetailOpen] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<PatientInfo | null>(null);
   const [selectedAssessment, setSelectedAssessment] = useState<ChildAssessment | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
-  // New patient form state
   const [newPatient, setNewPatient] = useState({
     name: '',
     age: '',
@@ -124,178 +136,159 @@ const HealthWorkerDashboard = () => {
     parentName: '',
   });
 
-  // Mock data for assessments
-  const mockAssessments: ChildAssessment[] = [
-    {
-      id: '1',
-      childName: 'أحمد محمد',
-      childAge: 2,
-      gender: 'ذكر',
-      governorate: 'تعز',
-      district: 'التعزية',
-      height: 85,
-      weight: 9.2,
-      muac: 11.5,
-      prediction: 'سوء تغذية حاد',
-      severity: 'شديد',
-      status: 'تحت المتابعة',
-      assessedBy: 'د. فاطمة',
-      assessmentDate: '2025-01-10',
-      followUpDate: '2025-01-24',
+  // API: Fetch health dashboard stats and assessments
+  const { data: dashboardData, isLoading: dashboardLoading } = useQuery<{
+    stats: HealthDashboardStats;
+    assessments: ChildAssessment[];
+    patients: PatientInfo[];
+  }>({
+    queryKey: ['/api/health/dashboard'],
+    queryFn: async () => {
+      const res = await fetch('/api/health/dashboard', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch dashboard');
+      return res.json();
     },
-    {
-      id: '2',
-      childName: 'مريم علي',
-      childAge: 3,
-      gender: 'أنثى',
-      governorate: 'عدن',
-      district: 'المنصورة',
-      height: 92,
-      weight: 12.5,
-      muac: 13.0,
-      prediction: 'سوء تغذية معتدل',
-      severity: 'متوسط',
-      status: 'مكتمل',
-      assessedBy: 'د. فاطمة',
-      assessmentDate: '2025-01-08',
-    },
-    {
-      id: '3',
-      childName: 'خالد حسن',
-      childAge: 1,
-      gender: 'ذكر',
-      governorate: 'الحديدة',
-      district: 'الزبير',
-      height: 72,
-      weight: 7.8,
-      muac: 10.5,
-      prediction: 'سوء تغذية حاد',
-      severity: 'شديد',
-      status: 'جديد',
-      assessedBy: 'د. فاطمة',
-      assessmentDate: '2025-01-12',
-      followUpDate: '2025-01-19',
-    },
-    {
-      id: '4',
-      childName: 'فاطمة سعيد',
-      childAge: 4,
-      gender: 'أنثى',
-      governorate: 'إب',
-      district: 'السدة',
-      height: 100,
-      weight: 14.0,
-      muac: 12.5,
-      prediction: 'سوء تغذية معتدل',
-      severity: 'متوسط',
-      status: 'تحت المتابعة',
-      assessedBy: 'د. فاطمة',
-      assessmentDate: '2025-01-05',
-      followUpDate: '2025-01-19',
-    },
-    {
-      id: '5',
-      childName: 'عمر يوسف',
-      childAge: 2,
-      gender: 'ذكر',
-      governorate: 'صنعاء',
-      district: 'شعوب',
-      height: 86,
-      weight: 11.0,
-      muac: 13.5,
-      prediction: 'معدل طبيعي',
-      severity: 'منخفض',
-      status: 'مكتمل',
-      assessedBy: 'د. فاطمة',
-      assessmentDate: '2025-01-11',
-    },
-  ];
+  });
 
-  const governorates = ['تعز', 'عدن', 'الحديدة', 'إب', 'صنعاء', 'صعدة', 'حجة', 'تعز'];
-  
+  // Fallback to predict/batch if health dashboard not available
+  const { data: batchData } = useQuery<ChildAssessment[]>({
+    queryKey: ['/api/predict/batch'],
+    enabled: !dashboardData,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const assessments = dashboardData?.assessments ?? batchData ?? [];
+  const stats = dashboardData?.stats;
+  const patients = dashboardData?.patients ?? [];
+
   // Filter assessments
-  const filteredAssessments = mockAssessments.filter((assessment) => {
-    const matchesSearch = assessment.childName.includes(searchQuery);
-    const matchesGovernorate =
-      selectedGovernorate === 'all' || assessment.governorate === selectedGovernorate;
-    const matchesSeverity =
-      selectedSeverity === 'all' || assessment.severity === selectedSeverity;
-    const matchesStatus =
-      selectedStatus === 'all' || assessment.status === selectedStatus;
+  const filteredAssessments = assessments.filter((assessment) => {
+    const matchesSearch = assessment.childName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesGovernorate = selectedGovernorate === 'all' || assessment.governorate === selectedGovernorate;
+    const matchesSeverity = selectedSeverity === 'all' || assessment.severity === selectedSeverity;
+    const matchesStatus = selectedStatus === 'all' || assessment.status === selectedStatus;
     return matchesSearch && matchesGovernorate && matchesSeverity && matchesStatus;
   });
 
-  // Calculate statistics
-  const totalAssessments = mockAssessments.length;
-  const severeCases = mockAssessments.filter((a) => a.severity === 'شديد').length;
-  const moderateCases = mockAssessments.filter((a) => a.severity === 'متوسط').length;
-  const followUpNeeded = mockAssessments.filter((a) => a.status === 'تحت المتابعة').length;
-  const newAssessments = mockAssessments.filter((a) => a.status === 'جديد').length;
+  // Calculate stats from API or fallback
+  const totalAssessments = stats?.totalAssessments ?? assessments.length;
+  const severeCases = stats?.severeCases ?? assessments.filter((a) => a.severity === 'شديد').length;
+  const moderateCases = stats?.moderateCases ?? assessments.filter((a) => a.severity === 'متوسط').length;
+  const followUpNeeded = stats?.followUpNeeded ?? assessments.filter((a) => a.status === 'تحت المتابعة').length;
+  const newAssessments = stats?.newAssessments ?? assessments.filter((a) => a.status === 'جديد').length;
+
+  // Mutation: Add new patient/assessment
+  const addAssessmentMutation = useMutation({
+    mutationFn: async (assessment: ChildAssessment) => {
+      const res = await fetch('/api/predict/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify([assessment]),
+      });
+      if (!res.ok) throw new Error('Failed to add assessment');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/health/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/predict/batch'] });
+    },
+  });
+
+  // Mutation: Delete assessment
+  const deleteAssessmentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/predict/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to delete assessment');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/health/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/predict/batch'] });
+      setIsDeleteDialogOpen(false);
+    },
+  });
 
   // Severity colors
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'شديد':
-        return 'bg-red-500';
-      case 'متوسط':
-        return 'bg-yellow-500';
-      case 'منخفض':
-        return 'bg-green-500';
-      default:
-        return 'bg-gray-500';
+      case 'شديد': return 'bg-red-500';
+      case 'متوسط': return 'bg-yellow-500';
+      case 'منخفض': return 'bg-green-500';
+      default: return 'bg-gray-500';
     }
   };
 
   // Status colors
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'جديد':
-        return 'bg-blue-500';
-      case 'تحت المتابعة':
-        return 'bg-yellow-500';
-      case 'مكتمل':
-        return 'bg-green-500';
-      default:
-        return 'bg-gray-500';
+      case 'جديد': return 'bg-blue-500';
+      case 'تحت المتابعة': return 'bg-yellow-500';
+      case 'مكتمل': return 'bg-green-500';
+      default: return 'bg-gray-500';
     }
   };
-  
+
   // Handle view details
   const handleViewDetails = (assessment: ChildAssessment) => {
     setSelectedAssessment(assessment);
     setIsViewDetailOpen(true);
   };
 
-  // Handle add new patient
+  // Handle add patient - sends to prediction API
   const handleAddPatient = () => {
-    toast({
-      title: 'تمت الإضافة',
-      description: 'تم تسجيل المريض الجديد بنجاح',
+    if (!newPatient.name || !newPatient.age) {
+      toast({ title: 'خطأ', description: 'يرجى إدخال اسم الطفل والعمر', variant: 'destructive' });
+      return;
+    }
+    const assessment: ChildAssessment = {
+      id: crypto.randomUUID(),
+      childName: newPatient.name,
+      childAge: parseInt(newPatient.age),
+      gender: newPatient.gender,
+      governorate: newPatient.governorate,
+      district: newPatient.district,
+      height: 85,
+      weight: 10,
+      muac: 12,
+      prediction: 'قيد التقييم',
+      severity: 'غير محدد',
+      status: 'جديد',
+      assessedBy: user?.name || 'غير محدد',
+      assessmentDate: new Date().toISOString().split('T')[0],
+    };
+    addAssessmentMutation.mutate(assessment, {
+      onSuccess: () => {
+        toast({ title: 'تمت الإضافة', description: 'تم تسجيل المريض الجديد بنجاح' });
+        setIsAddPatientOpen(false);
+        setNewPatient({ name: '', age: '', gender: 'male', governorate: '', district: '', phoneNumber: '', parentName: '' });
+      },
+      onError: () => {
+        toast({ title: 'خطأ', description: 'فشل إضافة المريض', variant: 'destructive' });
+      },
     });
-    setIsAddPatientOpen(false);
-    setNewPatient({
-      name: '',
-      age: '',
-      gender: 'male',
-      governorate: '',
-      district: '',
-      phoneNumber: '',
-      parentName: '',
-    });
-    queryClient.invalidateQueries({ queryKey: ['assessments'] });
   };
 
-  // Handle delete assessment
   const handleDeleteAssessment = () => {
-    toast({
-      title: 'تم الحذف',
-      description: 'تم حذف التقييم بنجاح',
-      variant: 'destructive',
-    });
-    setIsDeleteDialogOpen(false);
-    setIsViewDetailOpen(false);
+    if (selectedAssessment) {
+      deleteAssessmentMutation.mutate(selectedAssessment.id);
+    }
   };
-  
+
+  if (dashboardLoading && !batchData) {
+    return (
+      <div className='min-h-screen bg-gray-50 flex items-center justify-center' dir='rtl'>
+        <div className='text-center'>
+          <Activity className='w-12 h-12 text-blue-500 mx-auto animate-spin mb-4' />
+          <p className='text-gray-600'>جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className='min-h-screen bg-gray-50' dir='rtl'>
       {/* Header */}
@@ -303,11 +296,9 @@ const HealthWorkerDashboard = () => {
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
           <div className='flex justify-between items-center h-16'>
             <div className='flex items-center space-x-4 space-x-reverse'>
-              <h1 className='text-2xl font-bold text-gray-900'>
-                لوحة العامل الصحي
-              </h1>
+              <h1 className='text-2xl font-bold text-gray-900'>لوحة العامل الصحي</h1>
               <Badge variant='secondary' className='bg-blue-100 text-blue-800'>
-                {user?.role === 'health_worker' ? 'عامل صحي' : 'طبيب'}
+                {user?.role === 'health_worker' ? 'عامل صحي' : user?.role === 'doctor' ? 'طبيب' : 'مستخدم'}
               </Badge>
             </div>
             <div className='flex items-center space-x-4 space-x-reverse'>
@@ -328,7 +319,7 @@ const HealthWorkerDashboard = () => {
           </div>
         </div>
       </header>
-      
+
       {/* Main Content */}
       <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
         {/* Statistics Cards */}
@@ -343,7 +334,6 @@ const HealthWorkerDashboard = () => {
               <p className='text-xs text-gray-500'>هذا الشهر</p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
               <CardTitle className='text-sm font-medium'>حالات شديدة</CardTitle>
@@ -354,7 +344,6 @@ const HealthWorkerDashboard = () => {
               <p className='text-xs text-gray-500'>تتطلب تدخلاً عاجلاً</p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
               <CardTitle className='text-sm font-medium'>تحت المتابعة</CardTitle>
@@ -365,7 +354,6 @@ const HealthWorkerDashboard = () => {
               <p className='text-xs text-gray-500'>بحاجة لمتابعة</p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
               <CardTitle className='text-sm font-medium'>تقييمات جديدة</CardTitle>
@@ -377,7 +365,6 @@ const HealthWorkerDashboard = () => {
             </CardContent>
           </Card>
         </div>
-        
         {/* Tabs */}
         <Tabs defaultValue='assessments' className='space-y-4'>
           <TabsList>
@@ -394,7 +381,6 @@ const HealthWorkerDashboard = () => {
               التقارير
             </TabsTrigger>
           </TabsList>
-
           <TabsContent value='assessments'>
             {/* Search and Filter */}
             <Card className='mb-6'>
@@ -409,7 +395,6 @@ const HealthWorkerDashboard = () => {
                       className='pr-10'
                     />
                   </div>
-
                   <Select value={selectedGovernorate} onValueChange={setSelectedGovernorate}>
                     <SelectTrigger>
                       <SelectValue placeholder='المحافظة' />
@@ -423,7 +408,6 @@ const HealthWorkerDashboard = () => {
                       ))}
                     </SelectContent>
                   </Select>
-
                   <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
                     <SelectTrigger>
                       <SelectValue placeholder='درجة الشدة' />
@@ -435,7 +419,6 @@ const HealthWorkerDashboard = () => {
                       <SelectItem value='منخفض'>منخفض</SelectItem>
                     </SelectContent>
                   </Select>
-
                   <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                     <SelectTrigger>
                       <SelectValue placeholder='الحالة' />
@@ -450,7 +433,7 @@ const HealthWorkerDashboard = () => {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Assessments Table */}
             <Card>
               <CardHeader>
@@ -473,7 +456,14 @@ const HealthWorkerDashboard = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredAssessments.length === 0 ? (
+                      {assessments.length === 0 && dashboardData ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className='text-center py-8'>
+                            <AlertCircle className='w-12 h-12 text-gray-400 mx-auto mb-2' />
+                            <p className='text-gray-500'>لا توجد تقييمات</p>
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredAssessments.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={8} className='text-center py-8'>
                             <AlertCircle className='w-12 h-12 text-gray-400 mx-auto mb-2' />
@@ -540,9 +530,8 @@ const HealthWorkerDashboard = () => {
               </CardContent>
             </Card>
           </TabsContent>
-          
           <TabsContent value='patients'>
-            {/* Patients Tab */}
+            {/* Patients Tab - uses real API data */}
             <Card>
               <CardHeader className='flex flex-row items-center justify-between'>
                 <div>
@@ -570,9 +559,7 @@ const HealthWorkerDashboard = () => {
                           <Input
                             id='patientName'
                             value={newPatient.name}
-                            onChange={(e) =>
-                              setNewPatient({ ...newPatient, name: e.target.value })
-                            }
+                            onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
                             placeholder='اسم الطفل'
                           />
                         </div>
@@ -582,22 +569,18 @@ const HealthWorkerDashboard = () => {
                             id='patientAge'
                             type='number'
                             value={newPatient.age}
-                            onChange={(e) =>
-                              setNewPatient({ ...newPatient, age: e.target.value })
-                            }
+                            onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
                             placeholder='العمر'
                           />
                         </div>
                       </div>
                       <div className='space-y-2'>
-                        <Label htmlFor='parentName'>اسم الوال</Label>
+                        <Label htmlFor='parentName'>اسم الوالد</Label>
                         <Input
                           id='parentName'
                           value={newPatient.parentName}
-                          onChange={(e) =>
-                            setNewPatient({ ...newPatient, parentName: e.target.value })
-                          }
-                          placeholder='اسم الوال'
+                          onChange={(e) => setNewPatient({ ...newPatient, parentName: e.target.value })}
+                          placeholder='اسم الوالد'
                         />
                       </div>
                       <div className='grid grid-cols-2 gap-4'>
@@ -605,9 +588,7 @@ const HealthWorkerDashboard = () => {
                           <Label htmlFor='governorate'>المحافظة</Label>
                           <Select
                             value={newPatient.governorate}
-                            onValueChange={(value) =>
-                              setNewPatient({ ...newPatient, governorate: value })
-                            }
+                            onValueChange={(value) => setNewPatient({ ...newPatient, governorate: value })}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder='اختر المحافظة' />
@@ -626,9 +607,7 @@ const HealthWorkerDashboard = () => {
                           <Input
                             id='district'
                             value={newPatient.district}
-                            onChange={(e) =>
-                              setNewPatient({ ...newPatient, district: e.target.value })
-                            }
+                            onChange={(e) => setNewPatient({ ...newPatient, district: e.target.value })}
                             placeholder='المديرية'
                           />
                         </div>
@@ -639,9 +618,7 @@ const HealthWorkerDashboard = () => {
                           id='phone'
                           type='tel'
                           value={newPatient.phoneNumber}
-                          onChange={(e) =>
-                            setNewPatient({ ...newPatient, phoneNumber: e.target.value })
-                          }
+                          onChange={(e) => setNewPatient({ ...newPatient, phoneNumber: e.target.value })}
                           placeholder='رقم الهاتف'
                         />
                       </div>
@@ -670,85 +647,69 @@ const HealthWorkerDashboard = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {/* Mock patient data */}
-                      {[
-                        {
-                          id: '1',
-                          name: 'أحمد محمد',
-                          age: 2,
-                          governorate: 'تعز',
-                          assessmentCount: 3,
-                          lastAssessment: '2025-01-10',
-                          riskLevel: 'عالي',
-                        },
-                        {
-                          id: '2',
-                          name: 'مريم علي',
-                          age: 3,
-                          governorate: 'عدن',
-                          assessmentCount: 5,
-                          lastAssessment: '2025-01-08',
-                          riskLevel: 'متوسط',
-                        },
-                        {
-                          id: '3',
-                          name: 'خالد حسن',
-                          age: 1,
-                          governorate: 'الحديدة',
-                          assessmentCount: 1,
-                          lastAssessment: '2025-01-12',
-                          riskLevel: 'عالي',
-                        },
-                      ].map((patient) => (
-                        <TableRow key={patient.id}>
-                          <TableCell className='font-medium'>{patient.name}</TableCell>
-                          <TableCell>{patient.age} سنة</TableCell>
-                          <TableCell>
-                            <div className='flex items-center'>
-                              <MapPin className='w-3 h-3 ml-1 text-gray-400' />
-                              {patient.governorate}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant='secondary'>{patient.assessmentCount}</Badge>
-                          </TableCell>
-                          <TableCell>{patient.lastAssessment}</TableCell>
-                          <TableCell>
-                            <Badge
-                              className={
-                                patient.riskLevel === 'عالي'
-                                  ? 'bg-red-500'
-                                  : patient.riskLevel === 'متوسط'
-                                  ? 'bg-yellow-500'
-                                  : 'bg-green-500'
-                              }
-                            >
-                              {patient.riskLevel}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className='flex space-x-2 space-x-reverse'>
-                              <Button
-                                variant='ghost'
-                                size='sm'
-                                onClick={() => handleViewDetails(mockAssessments[0])}
-                              >
-                                <Eye className='w-4 h-4' />
-                              </Button>
-                              <Button variant='ghost' size='sm'>
-                                <FileText className='w-4 h-4' />
-                              </Button>
-                            </div>
+                      {patients.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className='text-center py-8'>
+                            <AlertCircle className='w-12 h-12 text-gray-400 mx-auto mb-2' />
+                            <p className='text-gray-500'>لا توجد بيانات مرضى</p>
                           </TableCell>
                         </TableRow>
-                      ))}
+                      ) : (
+                        patients.map((patient) => (
+                          <TableRow key={patient.id}>
+                            <TableCell className='font-medium'>{patient.name}</TableCell>
+                            <TableCell>{patient.age} سنة</TableCell>
+                            <TableCell>
+                              <div className='flex items-center'>
+                                <MapPin className='w-3 h-3 ml-1 text-gray-400' />
+                                {patient.governorate}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant='secondary'>{patient.assessmentCount}</Badge>
+                            </TableCell>
+                            <TableCell>{patient.lastAssessment}</TableCell>
+                            <TableCell>
+                              <Badge
+                                className={
+                                  patient.riskLevel === 'عالي'
+                                    ? 'bg-red-500'
+                                    : patient.riskLevel === 'متوسط'
+                                    ? 'bg-yellow-500'
+                                    : 'bg-green-500'
+                                }
+                              >
+                                {patient.riskLevel}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className='flex space-x-2 space-x-reverse'>
+                                <Button
+                                  variant='ghost'
+                                  size='sm'
+                                  onClick={() => {
+                                    const assessment = assessments.find(a =>
+                                      a.childName === patient.name
+                                    );
+                                    if (assessment) handleViewDetails(assessment);
+                                  }}
+                                >
+                                  <Eye className='w-4 h-4' />
+                                </Button>
+                                <Button variant='ghost' size='sm'>
+                                  <FileText className='w-4 h-4' />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
-          
           <TabsContent value='reports'>
             {/* Reports Tab */}
             <div className='space-y-6'>
@@ -792,7 +753,6 @@ const HealthWorkerDashboard = () => {
                         </div>
                       </CardContent>
                     </Card>
-
                     <Card>
                       <CardHeader>
                         <CardTitle className='text-lg'>حالات حسب المحافظة</CardTitle>
@@ -800,7 +760,7 @@ const HealthWorkerDashboard = () => {
                       <CardContent>
                         <div className='space-y-3'>
                           {governorates.map((gov) => {
-                            const count = mockAssessments.filter((a) => a.governorate === gov).length;
+                            const count = stats?.byGovernorate?.[gov] ?? assessments.filter((a) => a.governorate === gov).length;
                             return (
                               <div key={gov} className='flex justify-between items-center border-b pb-2 last:border-0'>
                                 <span>{gov}</span>
@@ -812,7 +772,6 @@ const HealthWorkerDashboard = () => {
                       </CardContent>
                     </Card>
                   </div>
-
                   <div className='mt-6 flex flex-wrap gap-4 justify-center'>
                     <Button variant='outline'>
                       <Download className='w-4 h-4 ml-2' />
@@ -833,7 +792,6 @@ const HealthWorkerDashboard = () => {
           </TabsContent>
         </Tabs>
       </main>
-      
       {/* View Details Dialog */}
       <Dialog open={isViewDetailOpen} onOpenChange={setIsViewDetailOpen}>
         <DialogContent className='sm:max-w-[600px]'>
@@ -864,7 +822,6 @@ const HealthWorkerDashboard = () => {
                     </p>
                   </div>
                 </div>
-
                 <div className='border-t pt-4'>
                   <h4 className='font-semibold mb-3'>القياسات الجسدية</h4>
                   <div className='grid grid-cols-3 gap-4'>
@@ -882,7 +839,31 @@ const HealthWorkerDashboard = () => {
                     </div>
                   </div>
                 </div>
-
+                {selectedAssessment.zScore && (
+                  <div className='border-t pt-4'>
+                    <h4 className='font-semibold mb-3'>مؤشرات التغذية (z-scores)</h4>
+                    <div className='grid grid-cols-3 gap-4'>
+                      {selectedAssessment.haz !== undefined && (
+                        <div className='text-center p-3 bg-blue-50 rounded-lg'>
+                          <p className='text-sm text-gray-500'>HAZ (الطول/العمر)</p>
+                          <p className='text-lg font-bold text-blue-600'>{selectedAssessment.haz.toFixed(2)}</p>
+                        </div>
+                      )}
+                      {selectedAssessment.waz !== undefined && (
+                        <div className='text-center p-3 bg-green-50 rounded-lg'>
+                          <p className='text-sm text-gray-500'>WAZ (الوزن/العمر)</p>
+                          <p className='text-lg font-bold text-green-600'>{selectedAssessment.waz.toFixed(2)}</p>
+                        </div>
+                      )}
+                      {selectedAssessment.wfl !== undefined && (
+                        <div className='text-center p-3 bg-purple-50 rounded-lg'>
+                          <p className='text-sm text-gray-500'>WFL (الوزن/الطول)</p>
+                          <p className='text-lg font-bold text-purple-600'>{selectedAssessment.wfl.toFixed(2)}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className='border-t pt-4'>
                   <h4 className='font-semibold mb-3'>نتائج التقييم</h4>
                   <div className='grid grid-cols-2 gap-4'>
@@ -911,7 +892,6 @@ const HealthWorkerDashboard = () => {
                     </div>
                   </div>
                 </div>
-
                 {selectedAssessment.followUpDate && (
                   <div className='border-t pt-4'>
                     <div className='flex items-center space-x-2 space-x-reverse bg-yellow-50 p-3 rounded-lg'>
