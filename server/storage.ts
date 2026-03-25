@@ -97,6 +97,9 @@ export class MemStorage implements IStorage {
     const stuntingRisk = 'low';
     const wastingRisk = 'low';
     const underweightRisk = 'low';
+    const stuntingProb = 0;
+    const wastingProb = 0;
+    const underweightProb = 0;
     const prediction: Prediction = {
       id,
       childName: data.childName,
@@ -109,6 +112,9 @@ export class MemStorage implements IStorage {
       stuntingRisk,
       wastingRisk,
       underweightRisk,
+      stuntingProb,
+      wastingProb,
+      underweightProb,
       overallRisk,
       notes: null,
       createdAt: new Date()
