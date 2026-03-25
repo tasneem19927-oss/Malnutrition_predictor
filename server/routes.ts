@@ -7,6 +7,7 @@ import https from "https";
 import http from "http";
 import bcrypt from "bcrypt";
 import session from "express-session";
+import { randomUUID } from "crypto";
 
 // Configuration for Python FastAPI backend
 const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8000";
@@ -79,7 +80,7 @@ function simulatePrediction(input: {
   const underweight_score = Math.min(1, Math.max(0, (waz + haz) / 4));
   const overall_score = stunting_score * 0.4 + wasting_score * 0.4 + underweight_score * 0.2;
   const risk = (score: number): string =>
-    score >= 0.75 ? "critical" : score >= 0.5 ? "high" : score >= 0.25 ? "medium" : "low";
+    score >= 0.75 ? "critical" : score >= 0.5 ? "high" : score >= 0.25 ? "moderate" : "low";
   return {
     stunting_risk: risk(stunting_score),
     wasting_risk: risk(wasting_score),
@@ -138,6 +139,7 @@ async function checkPythonAPI(): Promise<{ healthy: boolean; response_time_ms: n
     return { healthy: false, response_time_ms: Date.now() - start };
   }
 }
+
 // Main app setup
 export function registerRoutes(app: Express, server: Server) {
   // Session middleware
@@ -239,7 +241,7 @@ export function registerRoutes(app: Express, server: Server) {
         scientific_evidence: [],
         evidence_summary: "",
         treatment_plan: { immediate_actions: [], nutritional_interventions: [], medical_interventions: [] },
-        risk_summary: "\u0646\u0638\u0627\u0645 \u063a\u064a\u0631 \u0645\u062a\u0627\u062d - \u062a\u0646\u0628\u0624 \u0628\u0627\u0644\u0645\u062d\u0627\u0643\u0627\u0629",
+        risk_summary: "نظام غير متاح - تنبؤ بالمحاكاة",
         confidence: simulated.overall_score,
         language: input.notes || "ar",
         processing_time_ms: Date.now() - start,
@@ -292,7 +294,7 @@ export function registerRoutes(app: Express, server: Server) {
       if (language) url.searchParams.append("language", language);
       const result = await callPythonAPI<any>(url.pathname + url.search);
       return res.json(result);
-    } catch { return res.json({ entities: [], summary: "BioBERT \u063a\u064a\u0631 \u0645\u062a\u0627\u062d" }); }
+    } catch { return res.json({ entities: [], summary: "BioBERT غير متاح" }); }
   });
 
   // Text classification endpoint
@@ -345,7 +347,7 @@ interface Session {
   id: string;
   userId: number;
   username: string;
-  role: 'admin' | 'health' | 'data' | 'viewer';
+  role: 'admin' | 'health' | 'doctor';
   createdAt: number;
 }
 
@@ -365,7 +367,7 @@ function getSession(req: Request): Session | null {
 }
 
 // Auth required middleware factory
-function requireAuth(requiredRole?: 'admin' | 'health' | 'data') {
+function requireAuth(requiredRole?: 'admin' | 'health' | 'doctor') {
   return async (req: Request, res: Response, next: NextFunction) => {
     const session = getSession(req);
     if (!session) {
@@ -382,14 +384,14 @@ function requireAuth(requiredRole?: 'admin' | 'health' | 'data') {
 // Register
 app.post("/api/auth/register", async (req: Request, res: Response) => {
   const { username, email, password, role } = req.body;
-  if (!username || !email || !password || !role) {
+  if (!username || !password || !role) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
-  if (!['admin', 'health', 'data', 'viewer'].includes(role)) {
+  if (!['admin', 'health', 'doctor'].includes(role)) {
     return res.status(400).json({ error: 'Invalid role' });
   }
   try {
-    const user = await storage.createUser({ username, email, password_hash: password, role });
+    const user = await storage.createUser({ username, password, role });
     return res.status(201).json({
       message: 'User registered successfully',
       user: { id: user.id, username: user.username, role: user.role }
@@ -410,7 +412,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    const sessionId = crypto.randomUUID();
+    const sessionId = randomUUID();
     const session: Session = {
       id: sessionId,
       userId: user.id,
@@ -465,7 +467,7 @@ app.get("/api/admin/users", requireAuth('admin'), async (req: Request, res: Resp
 app.patch("/api/admin/users/:id/role", requireAuth('admin'), async (req: Request, res: Response) => {
   const { id } = req.params;
   const { role } = req.body;
-  if (!role || !['admin', 'health', 'data', 'viewer'].includes(role)) {
+  if (!role || !['admin', 'health', 'doctor'].includes(role)) {
     return res.status(400).json({ error: 'Invalid role' });
   }
   try {
@@ -489,8 +491,7 @@ app.get("/api/admin/dashboard", requireAuth('admin'), async (req: Request, res: 
       user_stats: {
         admin: users.filter(u => u.role === 'admin').length,
         health: users.filter(u => u.role === 'health').length,
-        data: users.filter(u => u.role === 'data').length,
-        viewer: users.filter(u => u.role === 'viewer').length
+        doctor: users.filter(u => u.role === 'doctor').length
       }
     });
   } catch (e) {
@@ -535,9 +536,9 @@ app.get("/api/health/export", requireAuth('health'), async (req: Request, res: R
     if (format === 'json') {
       return res.json(data);
     }
-    const csv = 'ID,Name,Date,Age,Sex,Weight,Height,MUAC,BMI,Status,Risk,Region\n' +
-      (data as any).predictions.map((p: any) =>
-        `${p.id},${p.child_name},${p.created_at},${p.age_months},${p.sex},${p.weight_kg},${p.height_cm},${p.muac_cm},${p.bmi},${p.malnutrition_status},${p.risk_level},${p.region}`
+    const csv = 'ID,Name,Date,Age,Sex,Weight,Height,MUAC,BMI,OverallRisk,StuntingRisk,WastingRisk,UnderweightRisk,Region\n' +
+      data.predictions.map((p: any) =>
+        `${p.id},${p.childName},${p.createdAt},${p.ageMonths},${p.sex},${p.weightKg},${p.heightCm},${p.muacCm},${(p.weightKg / ((p.heightCm / 100) ** 2)).toFixed(2)},${p.overallRisk},${p.stuntingRisk},${p.wastingRisk},${p.underweightRisk},${p.region}`
       ).join('\n');
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="predictions.csv"');
@@ -549,15 +550,19 @@ app.get("/api/health/export", requireAuth('health'), async (req: Request, res: R
 
 // Health: Add new prediction (data entry)
 app.post("/api/health/predictions", requireAuth('health'), async (req: Request, res: Response) => {
-  const { child_name, age_months, sex, weight_kg, height_cm, muac_cm, region } = req.body;
-  if (!child_name || !age_months || !sex || !weight_kg || !height_cm || !muac_cm) {
+  const { childName, ageMonths, sex, weightKg, heightCm, muacCm, region } = req.body;
+  if (!childName || ageMonths === undefined || !sex || weightKg === undefined || heightCm === undefined || muacCm === undefined) {
     return res.status(400).json({ error: 'Missing required child data' });
   }
   try {
     const result = await storage.addPrediction({
-      child_name, age_months: Number(age_months), sex,
-      weight_kg: Number(weight_kg), height_cm: Number(height_cm),
-      muac_cm: Number(muac_cm), region: region || 'unknown'
+      childName,
+      ageMonths: Number(ageMonths),
+      sex,
+      weightKg: Number(weightKg),
+      heightCm: Number(heightCm),
+      muacCm: Number(muacCm),
+      region: region || 'Unknown'
     });
     return res.status(201).json(result);
   } catch (e) {
@@ -565,22 +570,5 @@ app.post("/api/health/predictions", requireAuth('health'), async (req: Request, 
   }
 });
 
-// Data: Add prediction (data entry role)
-app.post("/api/data/predictions", requireAuth('data'), async (req: Request, res: Response) => {
-  const { child_name, age_months, sex, weight_kg, height_cm, muac_cm, region } = req.body;
-  if (!child_name || !age_months || !sex || !weight_kg || !height_cm || !muac_cm) {
-    return res.status(400).json({ error: 'Missing required child data' });
-  }
-  try {
-    const result = await storage.addPrediction({
-      child_name, age_months: Number(age_months), sex,
-      weight_kg: Number(weight_kg), height_cm: Number(height_cm),
-      muac_cm: Number(muac_cm), region: region || 'unknown'
-    });
-    return res.status(201).json(result);
-  } catch (e) {
-    return res.status(500).json({ error: 'Failed to add prediction', details: (e as Error).message });
-  }
-});
-
-// ========= End of Routes =========
+  // ========= End of Routes =========
+}
