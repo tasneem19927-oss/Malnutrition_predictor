@@ -210,7 +210,7 @@ class ModelInfoResponse(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """Load models on API startup."""
-    global predictor
+    global predictor, enhanced_api
     logger.info("=" * 60)
     logger.info("  Nizam Prediction API starting up...")
     logger.info(f"  Version: {API_VERSION}")
@@ -403,8 +403,9 @@ async def get_stats():
     }
 
 
-416
-=["System"])
+@app.get("/", tags=["System"]
+         
+    
 async def root():
     """API root - returns basic information."""
     return {
