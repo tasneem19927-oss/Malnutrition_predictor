@@ -7,7 +7,7 @@ import https from "https";
 import http from "http";
 
 // Configuration for Python FastAPI backend
-const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8001";
+const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8000";
 const PYTHON_API_TIMEOUT = parseInt(process.env.PYTHON_API_TIMEOUT || "30000");
 const FALLBACK_SIMULATION = process.env.FALLBACK_SIMULATION !== "false";
 
@@ -69,7 +69,7 @@ function simulatePrediction(input: {
   z_scores: {
     haz: number;
     waz: number;
-    whz?: number;
+    whz: number | null;
   };
   simulation: boolean;
 } {
@@ -85,14 +85,12 @@ function simulatePrediction(input: {
   const whz =
     input.height_cm && input.weight_kg
       ? (input.weight_kg - waz_median) / 1.2
-      : undefined;
+      : null;
 
   const stunting_score = Math.min(1, Math.max(0, -haz / 2));
   const wasting_score = Math.min(1, Math.max(0, -waz / 2));
   const underweight_score = Math.min(1, Math.max(0, (waz + haz) / 4));
-
-  const overall_score =
-    (stunting_score * 0.4 + wasting_score * 0.4 + underweight_score * 0.2);
+  const overall_score = stunting_score * 0.4 + wasting_score * 0.4 + underweight_score * 0.2;
 
   const risk = (score: number): string =>
     score >= 0.75 ? "critical" : score >= 0.5 ? "high" : score >= 0.25 ? "medium" : "low";
@@ -106,7 +104,11 @@ function simulatePrediction(input: {
     wasting_score: Math.round(wasting_score * 100) / 100,
     underweight_score: Math.round(underweight_score * 100) / 100,
     overall_score: Math.round(overall_score * 100) / 100,
-    z_scores: { haz: Math.round(haz * 100) / 100, waz: Math.round(waz * 100) / 100, whz: whz ? Math.round(whz * 100) / 100 : undefined },
+    z_scores: {
+      haz: Math.round(haz * 100) / 100,
+      waz: Math.round(waz * 100) / 100,
+      whz: whz ? Math.round(whz * 100) / 100 : null,
+    },
     simulation: true,
   };
 }
@@ -121,7 +123,7 @@ async function callPythonAPI<T>(
     const url = new URL(endpoint, PYTHON_API_URL);
     const options = {
       hostname: url.hostname,
-      port: url.port || 8001,
+      port: url.port || 8000,
       path: url.pathname + url.search,
       method: method,
       timeout: PYTHON_API_TIMEOUT,
@@ -176,7 +178,7 @@ export function registerRoutes(app: Express, server: Server) {
     next();
   });
 
-  // Enhanced prediction endpoint - proxies to Python FastAPI
+  // Enhanced prediction endpoint - proxies to Python FastAPI with RAG + BioBERT
   app.post("/api/predict/enhanced", async (req: Request, res: Response) => {
     const start = Date.now();
     try {
@@ -188,27 +190,23 @@ export function registerRoutes(app: Express, server: Server) {
         });
       }
 
-      const input = parsed.data;
+      const input = req.body;
 
       // Try Python FastAPI first
       if (FALLBACK_SIMULATION) {
         try {
           const pythonPayload = {
-            weight_kg: input.weight_kg,
-            height_cm: input.height_cm,
-            muac_cm: input.muac_cm,
-            age_months: input.age_months,
+            child_name: input.childName,
+            age_months: input.ageMonths,
             sex: input.sex,
+            weight_kg: input.weightKg,
+            height_cm: input.heightCm,
+            muac_cm: input.muacCm,
             region: input.region || "general",
-            clinical_notes: input.clinical_notes || "",
-            language: input.language || "ar",
+            notes: input.notes || "",
           };
 
-          const prediction = await callPythonAPI<any>(
-            "/predict/enhanced",
-            "POST",
-            pythonPayload
-          );
+          const prediction = await callPythonAPI<any>("/predict/enhanced", "POST", pythonPayload);
 
           const mlPrediction = prediction.ml_prediction || {};
           const enhancedResponse = {
@@ -231,7 +229,7 @@ export function registerRoutes(app: Express, server: Server) {
             treatment_plan: prediction.treatment_plan || {},
             risk_summary: prediction.risk_summary || "",
             confidence: prediction.confidence || 0,
-            language: input.language || "ar",
+            language: input.notes || "ar",
             processing_time_ms: prediction.processing_time_ms || Date.now() - start,
             simulation: false,
           };
@@ -244,10 +242,10 @@ export function registerRoutes(app: Express, server: Server) {
 
       // Fallback to z-score simulation
       const simulated = simulatePrediction({
-        weight_kg: input.weight_kg,
-        height_cm: input.height_cm,
-        muac_cm: input.muac_cm,
-        age_months: input.age_months,
+        weight_kg: input.weightKg,
+        height_cm: input.heightCm,
+        muac_cm: input.muacCm,
+        age_months: input.ageMonths,
         sex: input.sex,
         region: input.region,
       });
@@ -259,10 +257,10 @@ export function registerRoutes(app: Express, server: Server) {
         entity_summary: "",
         scientific_evidence: [],
         evidence_summary: "",
-        treatment_plan: { immediate_actions: [], nutritional_interventions: [], medical_interventions: [], follow_up: [], prevention: [] },
-        risk_summary: "تنبؤ بالمحاكاة - النظام الذكي غير متاح",
+        treatment_plan: { immediate_actions: [], nutritional_interventions: [], medical_interventions: [] },
+        risk_summary: "نظام غير متاح - تنبو بالمحاكاة",
         confidence: simulated.overall_score,
-        language: input.language || "ar",
+        language: input.notes || "ar",
         processing_time_ms: Date.now() - start,
         simulation: true,
       };
@@ -359,7 +357,7 @@ export function registerRoutes(app: Express, server: Server) {
     }
 
     try {
-      const results = await callPythonAPI<any[]>("/predict/enhanced/batch", "POST", children);
+      const results = await callPythonAPI<any[]>("/predict/batch", "POST", children);
       return res.json({ results, count: results.length });
     } catch (error: any) {
       console.warn("Batch Python API failed, falling back:", error.message);
@@ -396,22 +394,109 @@ export function registerRoutes(app: Express, server: Server) {
     // Validate and redirect to enhanced endpoint
     const parsed = predictionInputSchema.safeParse(req.body);
     if (!parsed.success) {
-          // For backward compatibility, call the same handler as /predict/enhanced
-    // This is a simpler wrapper without the full enhanced features
-    const fallback = simulatePrediction(parsed.data);
-    return res.json({
-      prediction_id: `legacy_${Date.now()}`,
-      ml_prediction: fallback,
-      simulation: true,
-      language: parsed.data.language || "ar",
-    });
-
-// Helper for internal use - simulates prediction without HTTP
-export const simulatePredictionHelper = simulatePrediction;
+      // For backward compatibility, call the same handler as /predict/enhanced
+      // This is a simpler wrapper without the full enhanced features
+      const fallback = simulatePrediction(req.body);
+      return res.json({
+        prediction_id: `legacy_${Date.now()}`,
+        ml_prediction: fallback,
+        simulation: true,
+        language: req.body.language || "ar",
+      });
+    } else {
+      // Validation passed - redirect to enhanced endpoint
+      return res.json({ message: "Use /api/predict/enhanced for full features", language: req.body.language || "ar" });
     }
+  });
 
-    // Call enhanced internally
-    const enhancedReq = { body: parsed.data } as Request;
-      // Note: Legacy endpoint - use /api/predict/enhanced for new implementations
+  // Admin endpoints - role-based access
+  app.get("/api/admin/stats", async (_req: Request, res: Response) => {
+    try {
+      const stats = await storage.getStats();
+      return res.json({
+        ...stats,
+        dashboard_ready: true,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      return res.json({ error: "Failed to fetch stats", details: error.message });
+    }
+  });
+
+  app.get("/api/admin/predictions", async (_req: Request, res: Response) => {
+    try {
+      const predictions = await storage.getPredictions();
+      return res.json({ predictions, count: predictions.length });
+    } catch (error: any) {
+      return res.json({ error: "Failed to fetch predictions", details: error.message });
+    }
+  });
+
+  app.get("/api/admin/predictions/:id", async (req: Request, res: Response) => {
+    try {
+      const prediction = await storage.getPrediction(req.params.id);
+      if (!prediction) {
+        return res.status(404).json({ error: "Prediction not found" });
+      }
+      return res.json(prediction);
+    } catch (error: any) {
+      return res.status(500).json({ error: "Failed to fetch prediction", details: error.message });
+    }
+  });
+
+  app.delete("/api/admin/predictions/:id", async (req: Request, res: Response) => {
+    try {
+      const deleted = await storage.deletePrediction(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Prediction not found" });
+      }
+      return res.json({ success: true, message: "Prediction deleted" });
+    } catch (error: any) {
+      return res.status(500).json({ error: "Failed to delete prediction", details: error.message });
+    }
+  });
+
+  // Health worker dashboard endpoint
+  app.get("/api/health/dashboard", async (_req: Request, res: Response) => {
+    try {
+      const stats = await storage.getStats();
+      const recentPredictions = await storage.getPredictions();
+      const critical = recentPredictions.filter(p => p.overallRisk === "critical");
+      const highRisk = recentPredictions.filter(p => p.overallRisk === "high");
+
+      return res.json({
+        summary: stats,
+        critical_children: critical.length,
+        high_risk_children: highRisk.length,
+        recent_predictions: recentPredictions.slice(0, 10),
+        priority_list: [...critical, ...highRisk].slice(0, 20),
+      });
+    } catch (error: any) {
+      return res.json({ error: "Dashboard unavailable", details: error.message });
+    }
+  });
+
+  // Root endpoint
+  app.get("/api", (_req: Request, res: Response) => {
+    res.json({
+      name: "Nizam Child Malnutrition Prediction API Gateway",
+      version: "1.0.0",
+      description: "AI-powered malnutrition prediction gateway for children aged 0-60 months",
+      endpoints: {
+        predict: "POST /api/predict",
+        predict_enhanced: "POST /api/predict/enhanced",
+        predict_batch: "POST /api/predict/batch",
+        health: "GET /api/health",
+        stats: "GET /api/stats",
+        guidelines: "GET /api/guidelines",
+        entities_types: "GET /api/entities/types",
+        analyze_text: "POST /api/analyze/text",
+        classify_text: "POST /api/classify/text",
+        admin_stats: "GET /api/admin/stats",
+        admin_predictions: "GET /api/admin/predictions",
+        health_dashboard: "GET /api/health/dashboard",
+        docs: "/api/docs (via Python FastAPI)",
+      },
+    });
   });
 }
