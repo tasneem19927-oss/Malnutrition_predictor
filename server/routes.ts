@@ -5,11 +5,14 @@ import { predictionInputSchema } from "@shared/schema";
 import { z } from "zod";
 import https from "https";
 import http from "http";
+import bcrypt from "bcrypt";
+import session from "express-session";
 
 // Configuration for Python FastAPI backend
 const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8000";
 const PYTHON_API_TIMEOUT = parseInt(process.env.PYTHON_API_TIMEOUT || "30000");
 const FALLBACK_SIMULATION = process.env.FALLBACK_SIMULATION !== "false";
+const SESSION_SECRET = process.env.SESSION_SECRET || "nizam-predictor-dev-secret-change-in-prod";
 
 // WHO reference data for z-score approximation (fallback)
 const WHO_HAZ_MEDIAN: Record<number, Record<string, number>> = {
@@ -39,9 +42,7 @@ function interpolate(
   ageMonths: number,
   sex: string
 ): number {
-  const ages = Object.keys(table)
-    .map(Number)
-    .sort((a, b) => a - b);
+  const ages = Object.keys(table).map(Number).sort((a, b) => a - b);
   const lower = Math.max(...ages.filter((a) => a <= ageMonths));
   const upper = Math.min(...ages.filter((a) => a >= ageMonths));
   if (lower === upper) return table[lower][sex];
@@ -49,7 +50,6 @@ function interpolate(
   return table[lower][sex] + t * (table[upper][sex] - table[lower][sex]);
 }
 
-// Fallback z-score simulation (when Python API is unavailable)
 function simulatePrediction(input: {
   weight_kg?: number;
   height_cm?: number;
@@ -66,35 +66,20 @@ function simulatePrediction(input: {
   wasting_score: number;
   underweight_score: number;
   overall_score: number;
-  z_scores: {
-    haz: number;
-    waz: number;
-    whz: number | null;
-  };
+  z_scores: { haz: number; waz: number; whz: number | null };
   simulation: boolean;
 } {
   const haz_median = interpolate(WHO_HAZ_MEDIAN, input.age_months, input.sex);
   const waz_median = interpolate(WHO_WAZ_MEDIAN, input.age_months, input.sex);
-
-  const haz = input.height_cm
-    ? (input.height_cm - haz_median) / 2.5
-    : -2.0;
-  const waz = input.weight_kg
-    ? (input.weight_kg - waz_median) / 1.2
-    : -2.0;
-  const whz =
-    input.height_cm && input.weight_kg
-      ? (input.weight_kg - waz_median) / 1.2
-      : null;
-
+  const haz = input.height_cm ? (input.height_cm - haz_median) / 2.5 : -2.0;
+  const waz = input.weight_kg ? (input.weight_kg - waz_median) / 1.2 : -2.0;
+  const whz = input.height_cm && input.weight_kg ? (input.weight_kg - waz_median) / 1.2 : null;
   const stunting_score = Math.min(1, Math.max(0, -haz / 2));
   const wasting_score = Math.min(1, Math.max(0, -waz / 2));
   const underweight_score = Math.min(1, Math.max(0, (waz + haz) / 4));
   const overall_score = stunting_score * 0.4 + wasting_score * 0.4 + underweight_score * 0.2;
-
   const risk = (score: number): string =>
     score >= 0.75 ? "critical" : score >= 0.5 ? "high" : score >= 0.25 ? "medium" : "low";
-
   return {
     stunting_risk: risk(stunting_score),
     wasting_risk: risk(wasting_score),
@@ -113,12 +98,7 @@ function simulatePrediction(input: {
   };
 }
 
-// Client function to call Python FastAPI
-async function callPythonAPI<T>(
-  endpoint: string,
-  method: string = "GET",
-  body?: unknown
-): Promise<T> {
+async function callPythonAPI<T>(endpoint: string, method: string = "GET", body?: unknown): Promise<T> {
   return new Promise((resolve, reject) => {
     const url = new URL(endpoint, PYTHON_API_URL);
     const options = {
@@ -127,12 +107,8 @@ async function callPythonAPI<T>(
       path: url.pathname + url.search,
       method: method,
       timeout: PYTHON_API_TIMEOUT,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
     };
-
     const protocol = url.protocol === "https:" ? https : http;
     const req = protocol.request(options, (res) => {
       let data = "";
@@ -146,21 +122,13 @@ async function callPythonAPI<T>(
         }
       });
     });
-
     req.on("error", reject);
-    req.on("timeout", () => {
-      req.destroy();
-      reject(new Error("Python API timeout"));
-    });
-
-    if (body) {
-      req.write(JSON.stringify(body));
-    }
+    req.on("timeout", () => { req.destroy(); reject(new Error("Python API timeout")); });
+    if (body) req.write(JSON.stringify(body));
     req.end();
   });
 }
 
-// Health check with Python API status
 async function checkPythonAPI(): Promise<{ healthy: boolean; response_time_ms: number }> {
   const start = Date.now();
   try {
@@ -170,29 +138,48 @@ async function checkPythonAPI(): Promise<{ healthy: boolean; response_time_ms: n
     return { healthy: false, response_time_ms: Date.now() - start };
   }
 }
-
 // Main app setup
 export function registerRoutes(app: Express, server: Server) {
-  app.use("/api/predict", async (req: Request, res: Response, next: NextFunction) => {
+  // Session middleware
+  app.use(
+    session({
+      secret: SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000,
+        sameSite: "lax",
+      },
+    })
+  );
+
+  // Auth middleware - attach user to request if logged in
+  app.use(async (req: Request, res: Response, next: NextFunction) => {
+    if ((req.session as any).userId) {
+      try {
+        const user = await storage.getUser((req.session as any).userId);
+        if (user) (req as any).user = user;
+      } catch {}
+    }
+    next();
+  });
+
+  app.use("/api/predict", (req: Request, res: Response, next: NextFunction) => {
     res.setHeader("X-Powered-By", "Nizam-Predictor");
     next();
   });
 
-  // Enhanced prediction endpoint - proxies to Python FastAPI with RAG + BioBERT
+  // Enhanced prediction endpoint
   app.post("/api/predict/enhanced", async (req: Request, res: Response) => {
     const start = Date.now();
     try {
       const parsed = predictionInputSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({
-          error: "Invalid input",
-          details: parsed.error.issues,
-        });
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.issues });
       }
-
       const input = req.body;
-
-      // Try Python FastAPI first
       if (FALLBACK_SIMULATION) {
         try {
           const pythonPayload = {
@@ -205,9 +192,7 @@ export function registerRoutes(app: Express, server: Server) {
             region: input.region || "general",
             notes: input.notes || "",
           };
-
           const prediction = await callPythonAPI<any>("/predict/enhanced", "POST", pythonPayload);
-
           const mlPrediction = prediction.ml_prediction || {};
           const enhancedResponse = {
             prediction_id: prediction.prediction_id || `pred_${Date.now()}`,
@@ -226,21 +211,18 @@ export function registerRoutes(app: Express, server: Server) {
             entity_summary: prediction.entity_summary || "",
             scientific_evidence: prediction.scientific_evidence || [],
             evidence_summary: prediction.evidence_summary || "",
-            treatment_plan: prediction.treatment_plan || {},
+            treatment_plan: prediction.treatment_plan || { immediate_actions: [], nutritional_interventions: [], medical_interventions: [] },
             risk_summary: prediction.risk_summary || "",
             confidence: prediction.confidence || 0,
             language: input.notes || "ar",
             processing_time_ms: prediction.processing_time_ms || Date.now() - start,
             simulation: false,
           };
-
           return res.json(enhancedResponse);
-        } catch (pythonError: any) {
-          console.warn("Python API unavailable, falling back to simulation:", pythonError.message);
+        } catch (e: any) {
+          console.warn("Python API unavailable:", e.message);
         }
       }
-
-      // Fallback to z-score simulation
       const simulated = simulatePrediction({
         weight_kg: input.weightKg,
         height_cm: input.heightCm,
@@ -249,8 +231,7 @@ export function registerRoutes(app: Express, server: Server) {
         sex: input.sex,
         region: input.region,
       });
-
-      const fallbackResponse = {
+      return res.json({
         prediction_id: `sim_${Date.now()}`,
         ml_prediction: simulated,
         medical_entities: [],
@@ -258,34 +239,26 @@ export function registerRoutes(app: Express, server: Server) {
         scientific_evidence: [],
         evidence_summary: "",
         treatment_plan: { immediate_actions: [], nutritional_interventions: [], medical_interventions: [] },
-        risk_summary: "نظام غير متاح - تنبو بالمحاكاة",
+        risk_summary: "\u0646\u0638\u0627\u0645 \u063a\u064a\u0631 \u0645\u062a\u0627\u062d - \u062a\u0646\u0628\u0624 \u0628\u0627\u0644\u0645\u062d\u0627\u0643\u0627\u0629",
         confidence: simulated.overall_score,
         language: input.notes || "ar",
         processing_time_ms: Date.now() - start,
         simulation: true,
-      };
-
-      return res.json(fallbackResponse);
-    } catch (error: any) {
-      console.error("Prediction error:", error);
-      return res.status(500).json({ error: "Internal server error", details: error.message });
+      });
+    } catch (e: any) {
+      return res.status(500).json({ error: "Internal server error", details: e.message });
     }
   });
 
-  // System health check - includes Python API status
+  // System health check
   app.get("/api/health", async (_req: Request, res: Response) => {
     const [pythonHealth, dbStatus] = await Promise.all([
       checkPythonAPI(),
       storage.getStats().then(() => ({ healthy: true })).catch(() => ({ healthy: false })),
     ]);
-
     res.json({
       status: pythonHealth.healthy ? "healthy" : "degraded",
-      components: {
-        node_server: true,
-        python_api: pythonHealth.healthy,
-        database: dbStatus.healthy,
-      },
+      components: { node_server: true, python_api: pythonHealth.healthy, database: dbStatus.healthy },
       python_api_response_time_ms: pythonHealth.response_time_ms,
       python_api_url: PYTHON_API_URL,
       fallback_simulation_enabled: FALLBACK_SIMULATION,
@@ -293,210 +266,321 @@ export function registerRoutes(app: Express, server: Server) {
     });
   });
 
-  // Proxy to Python FastAPI guidelines endpoint
+  // Proxy to Python FastAPI guidelines
   app.get("/api/guidelines", async (_req: Request, res: Response) => {
     try {
       const guidelines = await callPythonAPI<any>("/guidelines");
       return res.json(guidelines);
-    } catch {
-      return res.json({ guidelines: [], protocols: [], micronutrients: [] });
-    }
+    } catch { return res.json({ guidelines: [], protocols: [], micronutrients: [] }); }
   });
 
-  // Proxy to Python FastAPI entity types endpoint
+  // Proxy to Python entity types
   app.get("/api/entities/types", async (_req: Request, res: Response) => {
     try {
       const entityTypes = await callPythonAPI<any>("/entities/types");
       return res.json(entityTypes);
-    } catch {
-      return res.json({ english: [], arabic: [] });
-    }
+    } catch { return res.json({ english: [], arabic: [] }); }
   });
 
-  // Text analysis endpoint - proxies to BioBERT
+  // Text analysis endpoint
   app.post("/api/analyze/text", async (req: Request, res: Response) => {
     const { text, language } = req.body;
-    if (!text) {
-      return res.status(400).json({ error: "Text is required" });
-    }
+    if (!text) return res.status(400).json({ error: "Text is required" });
     try {
       const url = new URL("/analyze/text", PYTHON_API_URL);
       url.searchParams.append("text", text);
       if (language) url.searchParams.append("language", language);
-
       const result = await callPythonAPI<any>(url.pathname + url.search);
       return res.json(result);
-    } catch {
-      return res.json({ entities: [], summary: "BioBERT غير متاح" });
-    }
+    } catch { return res.json({ entities: [], summary: "BioBERT \u063a\u064a\u0631 \u0645\u062a\u0627\u062d" }); }
   });
 
-  // Text classification endpoint - proxies to BioBERT
+  // Text classification endpoint
   app.post("/api/classify/text", async (req: Request, res: Response) => {
     const { text, language } = req.body;
-    if (!text) {
-      return res.status(400).json({ error: "Text is required" });
-    }
+    if (!text) return res.status(400).json({ error: "Text is required" });
     try {
       const url = new URL("/classify/text", PYTHON_API_URL);
       url.searchParams.append("text", text);
       if (language) url.searchParams.append("language", language);
-
       const result = await callPythonAPI<any>(url.pathname + url.search);
       return res.json(result);
-    } catch {
-      return res.json({ classification: "unknown", confidence: 0 });
-    }
+    } catch { return res.json({ classification: "unknown", confidence: 0 }); }
   });
 
-  // Batch prediction endpoint - proxies to Python
+  // Batch prediction
   app.post("/api/predict/batch", async (req: Request, res: Response) => {
     const { children } = req.body;
     if (!Array.isArray(children) || children.length === 0) {
       return res.status(400).json({ error: "Children array is required" });
     }
-
     try {
       const results = await callPythonAPI<any[]>("/predict/batch", "POST", children);
       return res.json({ results, count: results.length });
-    } catch (error: any) {
-      console.warn("Batch Python API failed, falling back:", error.message);
-      // Fallback: process individually with simulation
+    } catch (e: any) {
+      console.warn("Batch Python API failed:", e.message);
       const simulated = children.map((c: any) => simulatePrediction({
-        weight_kg: c.weight_kg,
-        height_cm: c.height_cm,
-        muac_cm: c.muac_cm,
-        age_months: c.age_months,
-        sex: c.sex,
-        region: c.region,
+        weight_kg: c.weight_kg, height_cm: c.height_cm, muac_cm: c.muac_cm,
+        age_months: c.age_months, sex: c.sex, region: c.region,
       }));
       return res.json({ results: simulated, count: simulated.length, simulation: true });
     }
   });
 
-  // Statistics endpoint - returns DB stats
+  // Statistics endpoint
   app.get("/api/stats", async (_req: Request, res: Response) => {
     try {
       const stats = await storage.getStats();
       const pythonHealth = await checkPythonAPI();
-      return res.json({
-        ...stats,
-        python_api_healthy: pythonHealth.healthy,
-        server_started: new Date().toISOString(),
-      });
-    } catch (error: any) {
-      return res.json({ total_predictions: 0, python_api_healthy: false, error: error.message });
+      return res.json({ ...stats, python_api_healthy: pythonHealth.healthy, server_started: new Date().toISOString() });
+    } catch (e: any) {
+      return res.json({ total_predictions: 0, python_api_healthy: false, error: e.message });
     }
   });
 
-  // Legacy /predict endpoint for backward compatibility
-  app.post("/api/predict", async (req: Request, res: Response) => {
-    // Validate and redirect to enhanced endpoint
-    const parsed = predictionInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      // For backward compatibility, call the same handler as /predict/enhanced
-      // This is a simpler wrapper without the full enhanced features
-      const fallback = simulatePrediction(req.body);
-      return res.json({
-        prediction_id: `legacy_${Date.now()}`,
-        ml_prediction: fallback,
-        simulation: true,
-        language: req.body.language || "ar",
-      });
-    } else {
-      // Validation passed - redirect to enhanced endpoint
-      return res.json({ message: "Use /api/predict/enhanced for full features", language: req.body.language || "ar" });
-    }
-  });
+// ========= Authentication Routes =========
 
-  // Admin endpoints - role-based access
-  app.get("/api/admin/stats", async (_req: Request, res: Response) => {
-    try {
-      const stats = await storage.getStats();
-      return res.json({
-        ...stats,
-        dashboard_ready: true,
-        updated_at: new Date().toISOString(),
-      });
-    } catch (error: any) {
-      return res.json({ error: "Failed to fetch stats", details: error.message });
-    }
-  });
-
-  app.get("/api/admin/predictions", async (_req: Request, res: Response) => {
-    try {
-      const predictions = await storage.getPredictions();
-      return res.json({ predictions, count: predictions.length });
-    } catch (error: any) {
-      return res.json({ error: "Failed to fetch predictions", details: error.message });
-    }
-  });
-
-  app.get("/api/admin/predictions/:id", async (req: Request, res: Response) => {
-    try {
-      const prediction = await storage.getPrediction(req.params.id);
-      if (!prediction) {
-        return res.status(404).json({ error: "Prediction not found" });
-      }
-      return res.json(prediction);
-    } catch (error: any) {
-      return res.status(500).json({ error: "Failed to fetch prediction", details: error.message });
-    }
-  });
-
-  app.delete("/api/admin/predictions/:id", async (req: Request, res: Response) => {
-    try {
-      const deleted = await storage.deletePrediction(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ error: "Prediction not found" });
-      }
-      return res.json({ success: true, message: "Prediction deleted" });
-    } catch (error: any) {
-      return res.status(500).json({ error: "Failed to delete prediction", details: error.message });
-    }
-  });
-
-  // Health worker dashboard endpoint
-  app.get("/api/health/dashboard", async (_req: Request, res: Response) => {
-    try {
-      const stats = await storage.getStats();
-      const recentPredictions = await storage.getPredictions();
-      const critical = recentPredictions.filter(p => p.overallRisk === "critical");
-      const highRisk = recentPredictions.filter(p => p.overallRisk === "high");
-
-      return res.json({
-        summary: stats,
-        critical_children: critical.length,
-        high_risk_children: highRisk.length,
-        recent_predictions: recentPredictions.slice(0, 10),
-        priority_list: [...critical, ...highRisk].slice(0, 20),
-      });
-    } catch (error: any) {
-      return res.json({ error: "Dashboard unavailable", details: error.message });
-    }
-  });
-
-  // Root endpoint
-  app.get("/api", (_req: Request, res: Response) => {
-    res.json({
-      name: "Nizam Child Malnutrition Prediction API Gateway",
-      version: "1.0.0",
-      description: "AI-powered malnutrition prediction gateway for children aged 0-60 months",
-      endpoints: {
-        predict: "POST /api/predict",
-        predict_enhanced: "POST /api/predict/enhanced",
-        predict_batch: "POST /api/predict/batch",
-        health: "GET /api/health",
-        stats: "GET /api/stats",
-        guidelines: "GET /api/guidelines",
-        entities_types: "GET /api/entities/types",
-        analyze_text: "POST /api/analyze/text",
-        classify_text: "POST /api/classify/text",
-        admin_stats: "GET /api/admin/stats",
-        admin_predictions: "GET /api/admin/predictions",
-        health_dashboard: "GET /api/health/dashboard",
-        docs: "/api/docs (via Python FastAPI)",
-      },
-    });
-  });
+// Session store (in-memory)
+interface Session {
+  id: string;
+  userId: number;
+  username: string;
+  role: 'admin' | 'health' | 'data' | 'viewer';
+  createdAt: number;
 }
+
+const sessions = new Map<string, Session>();
+
+// Session middleware
+function getSession(req: Request): Session | null {
+  const sessionId = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!sessionId) return null;
+  const session = sessions.get(sessionId);
+  if (!session) return null;
+  if (Date.now() - session.createdAt > 24 * 60 * 60 * 1000) {
+    sessions.delete(sessionId);
+    return null;
+  }
+  return session;
+}
+
+// Auth required middleware factory
+function requireAuth(requiredRole?: 'admin' | 'health' | 'data') {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const session = getSession(req);
+    if (!session) {
+      return res.status(401).json({ error: 'Unauthorized - Login required' });
+    }
+    (req as any).user = session;
+    if (requiredRole && session.role !== requiredRole && session.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden - Insufficient permissions' });
+    }
+    next();
+  };
+}
+
+// Register
+app.post("/api/auth/register", async (req: Request, res: Response) => {
+  const { username, email, password, role } = req.body;
+  if (!username || !email || !password || !role) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  if (!['admin', 'health', 'data', 'viewer'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role' });
+  }
+  try {
+    const user = await storage.createUser({ username, email, password_hash: password, role });
+    return res.status(201).json({
+      message: 'User registered successfully',
+      user: { id: user.id, username: user.username, role: user.role }
+    });
+  } catch (e) {
+    return res.status(500).json({ error: 'Registration failed', details: (e as Error).message });
+  }
+});
+
+// Login
+app.post("/api/auth/login", async (req: Request, res: Response) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password required' });
+  }
+  try {
+    const user = await storage.authenticateUser(username, password);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const sessionId = crypto.randomUUID();
+    const session: Session = {
+      id: sessionId,
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      createdAt: Date.now()
+    };
+    sessions.set(sessionId, session);
+    return res.status(200).json({
+      message: 'Login successful',
+      session: { id: sessionId, username: user.username, role: user.role },
+      user: { id: user.id, username: user.username, role: user.role }
+    });
+  } catch (e) {
+    return res.status(500).json({ error: 'Login failed', details: (e as Error).message });
+  }
+});
+
+// Logout
+app.post("/api/auth/logout", async (req: Request, res: Response) => {
+  const sessionId = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (sessionId) {
+    sessions.delete(sessionId);
+  }
+  return res.status(200).json({ message: 'Logged out successfully' });
+});
+
+// Get current user
+app.get("/api/auth/me", async (req: Request, res: Response) => {
+  const session = getSession(req);
+  if (!session) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  return res.status(200).json({
+    user: { id: session.userId, username: session.username, role: session.role }
+  });
+});
+
+// ========= Admin Protected Routes =========
+
+// Admin: List all users
+app.get("/api/admin/users", requireAuth('admin'), async (req: Request, res: Response) => {
+  try {
+    const users = await storage.listUsers();
+    return res.json({ users, count: users.length });
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to list users', details: (e as Error).message });
+  }
+});
+
+// Admin: Update user role
+app.patch("/api/admin/users/:id/role", requireAuth('admin'), async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { role } = req.body;
+  if (!role || !['admin', 'health', 'data', 'viewer'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role' });
+  }
+  try {
+    const updated = await storage.updateUserRole(Number(id), role);
+    return res.json({ message: 'Role updated', user: updated });
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to update role', details: (e as Error).message });
+  }
+});
+
+// Admin: Dashboard stats
+app.get("/api/admin/dashboard", requireAuth('admin'), async (req: Request, res: Response) => {
+  try {
+    const stats = await storage.getStats();
+    const pythonHealth = await checkPythonAPI();
+    const users = await storage.listUsers();
+    return res.json({
+      ...stats,
+      python_api_healthy: pythonHealth.healthy,
+      total_users: users.length,
+      user_stats: {
+        admin: users.filter(u => u.role === 'admin').length,
+        health: users.filter(u => u.role === 'health').length,
+        data: users.filter(u => u.role === 'data').length,
+        viewer: users.filter(u => u.role === 'viewer').length
+      }
+    });
+  } catch (e) {
+    return res.status(500).json({ error: 'Dashboard data unavailable', details: (e as Error).message });
+  }
+});
+
+// ========= Health Worker Protected Routes =========
+
+// Health: Get dashboard data
+app.get("/api/health/dashboard", requireAuth('health'), async (req: Request, res: Response) => {
+  try {
+    const stats = await storage.getStats();
+    const pythonHealth = await checkPythonAPI();
+    const recentPredictions = await storage.getRecentPredictions(50);
+    return res.json({
+      ...stats,
+      python_api_healthy: pythonHealth.healthy,
+      recent_predictions: recentPredictions
+    });
+  } catch (e) {
+    return res.status(500).json({ error: 'Dashboard data unavailable', details: (e as Error).message });
+  }
+});
+
+// Health: Get all predictions
+app.get("/api/health/predictions", requireAuth('health'), async (req: Request, res: Response) => {
+  try {
+    const { page = '1', limit = '50', search, status, region } = req.query as any;
+    const predictions = await storage.getPredictions(Number(page), Number(limit), search, status, region);
+    return res.json(predictions);
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to fetch predictions', details: (e as Error).message });
+  }
+});
+
+// Health: Export predictions
+app.get("/api/health/export", requireAuth('health'), async (req: Request, res: Response) => {
+  try {
+    const { format = 'csv', status, region } = req.query as any;
+    const data = await storage.getPredictions(1, 10000, undefined, status, region);
+    if (format === 'json') {
+      return res.json(data);
+    }
+    const csv = 'ID,Name,Date,Age,Sex,Weight,Height,MUAC,BMI,Status,Risk,Region\n' +
+      (data as any).predictions.map((p: any) =>
+        `${p.id},${p.child_name},${p.created_at},${p.age_months},${p.sex},${p.weight_kg},${p.height_cm},${p.muac_cm},${p.bmi},${p.malnutrition_status},${p.risk_level},${p.region}`
+      ).join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="predictions.csv"');
+    return res.send(csv);
+  } catch (e) {
+    return res.status(500).json({ error: 'Export failed', details: (e as Error).message });
+  }
+});
+
+// Health: Add new prediction (data entry)
+app.post("/api/health/predictions", requireAuth('health'), async (req: Request, res: Response) => {
+  const { child_name, age_months, sex, weight_kg, height_cm, muac_cm, region } = req.body;
+  if (!child_name || !age_months || !sex || !weight_kg || !height_cm || !muac_cm) {
+    return res.status(400).json({ error: 'Missing required child data' });
+  }
+  try {
+    const result = await storage.addPrediction({
+      child_name, age_months: Number(age_months), sex,
+      weight_kg: Number(weight_kg), height_cm: Number(height_cm),
+      muac_cm: Number(muac_cm), region: region || 'unknown'
+    });
+    return res.status(201).json(result);
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to add prediction', details: (e as Error).message });
+  }
+});
+
+// Data: Add prediction (data entry role)
+app.post("/api/data/predictions", requireAuth('data'), async (req: Request, res: Response) => {
+  const { child_name, age_months, sex, weight_kg, height_cm, muac_cm, region } = req.body;
+  if (!child_name || !age_months || !sex || !weight_kg || !height_cm || !muac_cm) {
+    return res.status(400).json({ error: 'Missing required child data' });
+  }
+  try {
+    const result = await storage.addPrediction({
+      child_name, age_months: Number(age_months), sex,
+      weight_kg: Number(weight_kg), height_cm: Number(height_cm),
+      muac_cm: Number(muac_cm), region: region || 'unknown'
+    });
+    return res.status(201).json(result);
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to add prediction', details: (e as Error).message });
+  }
+});
+
+// ========= End of Routes =========
