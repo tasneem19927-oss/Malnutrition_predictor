@@ -1,10 +1,10 @@
-# Scientific Comparison: Nizam System vs. Nearest Research Study
+# Scientific Comparison: system System vs. Nearest Research Study
 
 ## Executive Summary / الملخص التنفيذي
 
-This document provides a comprehensive scientific comparison between the **Nizam AI System** (this project) and its nearest peer-reviewed research study: **Anku et al., "Predicting and identifying factors associated with undernutrition among children under five years in Ghana using machine learning algorithms," PLoS ONE, 2024** (DOI: 10.1371/journal.pone.0296625).
+This document provides a comprehensive scientific comparison between the **system AI System** (this project) and its nearest peer-reviewed research study: **Anku et al., "Predicting and identifying factors associated with undernutrition among children under five years in Ghana using machine learning algorithms," PLoS ONE, 2024** (DOI: 10.1371/journal.pone.0296625).
 
-**Key Finding:** Nizam demonstrates significant advancement over the baseline research study by integrating the same proven XGBoost algorithm (98% accuracy) with additional AI technologies (RAG, BioBERT) and a full-stack clinical deployment platform.
+**Key Finding:** system demonstrates significant advancement over the baseline research study by integrating the same proven XGBoost algorithm (98% accuracy) with additional AI technologies (RAG, BioBERT) and a full-stack clinical deployment platform.
 
 ---
 
@@ -31,16 +31,16 @@ This document provides a comprehensive scientific comparison between the **Nizam
 
 ---
 
-## 2. Nizam System Overview / نظرة عامة على نظام نِظام
+## 2. system System Overview / نظرة عامة على نظام نِظام
 
 | Attribute | Value |
 |-----------|-------|
-| **Project Name** | Nizam - Child Malnutrition Prediction System |
+| **Project Name** | system - Child Malnutrition Prediction System |
 ## 3. Detailed Feature Comparison / مقارنة تفصيلية للميزات
 
 ### 3.1 Algorithm Performance / أداء الخوارزميات
 
-| Metric | Nizam | Anku et al. (2024) |
+| Metric | system | Anku et al. (2024) |
 |--------|-------|---------------------|
 | **Wasting Accuracy** | 98.2% | 98% |
 | **Stunting Accuracy** | 98.0% | 98% |
@@ -55,7 +55,7 @@ This document provides a comprehensive scientific comparison between the **Nizam
 
 ### 3.2 Data Characteristics / خصائص البيانات
 
-| Metric | Nizam | Anku et al. (2024) |
+| Metric | system | Anku et al. (2024) |
 |--------|-------|---------------------|
 | **Sample Size** | 500 (simulated) | 8,564 (real) |
 | **Data Type** | Synthetic/Demo | Ghana DHS MICS 2017 |
@@ -66,12 +66,12 @@ This document provides a comprehensive scientific comparison between the **Nizam
 
 ### 3.3 Technology Stack / حزمة التكنولوجيا
 
-| Category | Nizam | Anku et al. (2024) |
+| Category | system | Anku et al. (2024) |
 |----------|-------|---------------------|
 | **ML Framework** | XGBoost + scikit-learn | Python (scikit-learn, XGBoost) |
 | **Frontend** | React + TypeScript + Tailwind | None |
 | **Backend API** | FastAPI (REST) | None |
-## 4. Unique Advantages of Nizam / المزايا الفريدة لنظام نِظام
+## 4. Unique Advantages of system / المزايا الفريدة لنظام نِظام
 
 ### 4.1 Technologies Not Present in Reference Study
 
@@ -79,18 +79,18 @@ This document provides a comprehensive scientific comparison between the **Nizam
 |------------|-------------|--------------------|
 | **RAG (Retrieval-Augmented Generation)** | Retrieves scientific evidence and treatment recommendations for each prediction. Uses sentence-transformers with FAISS index over 100+ research papers. | BioBERT (Lee et al., Bioinformatics 2020), MedRAG (Zhao, Web Conference 2025) |
 | **BioBERTMobile** | Analyzes clinical notes and patient reports to extract medical entities. Uses MobileBERT (lightweight) for edge deployment. | BioBERT (Lee et al., Bioinformatics 2020), MobileBERT optimization |
-| **EnhancedNizam Pipeline** | Combines ML prediction + RAG evidence + medical entity extraction in unified pipeline. | Novel integration |
+| **Enhancedsystem Pipeline** | Combines ML prediction + RAG evidence + medical entity extraction in unified pipeline. | Novel integration |
 | **WHO Z-Score Integration** | Real-time calculation of HAZ, WHZ, WAZ with WHO 2006 standards. | WHO Child Growth Standards |
 | **Offline-First Architecture** | Full functionality without internet, with cloud sync when available. Designed for Yemen connectivity constraints. | Edge AI best practices |
 
 ### 4.2 Deployment Readiness
 
-| Aspect | Nizam | Anku et al. (2024) |
+| Aspect | system | Anku et al. (2024) |
 |--------|-------|---------------------|
 | **Clinical Interface** | Interactive web UI with forms, results, and dashboards | Statistical analysis code only |
 ## 5. Limitations and Improvement Areas / نقاط الضعف ومجالات التحسين
 
-### 5.1 Limitations of Nizam (vs. Reference Study)
+### 5.1 Limitations of system (vs. Reference Study)
 
 | Limitation | Impact | Recommended Action |
 |------------|--------|--------------------|
@@ -102,22 +102,22 @@ This document provides a comprehensive scientific comparison between the **Nizam
 | **Ethics Approval** | No IRB/ethics committee approval | Apply for ethics clearance (required for publication) |
 | **Missing Data Handling** | No imputation strategy | Implement MICE or KNN imputation |
 
-### 5.2 Limitations of Reference Study (that Nizam addresses)
+### 5.2 Limitations of Reference Study (that system addresses)
 
-| Limitation in Anku et al. | How Nizam Addresses It |
+| Limitation in Anku et al. | How system Addresses It |
 |---------------------------|------------------------|
 | No deployment platform | Full-stack web platform ready for clinical use |
 ## 6. Scientific Conclusion / الخلاصة العلمية
 
-### 6.1 Validation of Nizam's Core Approach
+### 6.1 Validation of system's Core Approach
 
-The Anku et al. (2024) study provides **strong scientific validation** for Nizam's core algorithmic choice:
+The Anku et al. (2024) study provides **strong scientific validation** for system's core algorithmic choice:
 
 > **"The XGBoost model was the best model for predicting wasting, stunting, and underweight"** (Anku et al., PLoS ONE, 2024)
 
-This conclusion was reached after testing **7 different ML algorithms** on **8,564 children**. Nizam's use of XGBoost as the primary algorithm is therefore **research-validated**, not merely a technical choice.
+This conclusion was reached after testing **7 different ML algorithms** on **8,564 children**. system's use of XGBoost as the primary algorithm is therefore **research-validated**, not merely a technical choice.
 
-### 6.2 Nizam's Novel Contributions
+### 6.2 system's Novel Contributions
 
 | Contribution | Scientific Novelty |
 |--------------|--------------------|
@@ -157,7 +157,7 @@ This conclusion was reached after testing **7 different ML algorithms** on **8,5
 
 **Document Version**: 1.0  
 **Last Updated**: March 2026  
-**Prepared by**: Nizam AI Team  
+**Prepared by**: system AI Team  
 **For**: Master's Thesis - AI Malnutrition Prediction in Yemen
 | English-only documentation | Bilingual (Arabic + English) support |
 | No NLP for clinical notes | BioBERTMobile for medical text analysis |

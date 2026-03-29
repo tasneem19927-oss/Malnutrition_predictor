@@ -1,14 +1,14 @@
-# Nizam - Child Malnutrition Prediction System
+# system - Child Malnutrition Prediction System
 
-**Nizam** is an AI-powered, offline-first platform for predicting malnutrition (stunting, wasting, and underweight) in children aged 0–60 months using XGBoost machine learning models.
+**system** is an AI-powered, offline-first platform for predicting malnutrition (stunting, wasting, and underweight) in children aged 0–60 months using XGBoost machine learning models.
 
 ---
 
 ## Overview
 
-Child malnutrition remains a critical global health challenge. Nizam provides frontline health workers with a fast, accurate, and offline-capable tool to assess malnutrition risk and prioritize interventions.
+Child malnutrition remains a critical global health challenge. system provides frontline health workers with a fast, accurate, and offline-capable tool to assess malnutrition risk and prioritize interventions.
 
-### What Nizam Predicts
+### What system Predicts
 
 | Type | Clinical Definition | Primary Indicator |
 |------|--------------------|--------------------|
@@ -30,13 +30,13 @@ Child malnutrition remains a critical global health challenge. Nizam provides fr
 ## Project Structure
 
 ```
-nizam/
+system/
 ├── python/
 │   ├── train_models.py              # XGBoost model training script
 │   ├── predict_demo_script.py       # Batch prediction demo
 │   ├── prediction_api.py            # FastAPI REST API server
 │   ├── xgboost_model.py             # ML utilities and model classes
-│   ├── nizam_sample_training_data.csv  # 500 sample child records
+│   ├── system_sample_training_data.csv  # 500 sample child records
 │   └── requirements_full.txt        # Python dependencies
 ├── schema.sql                       # PostgreSQL database schema
 ├── README.md                        # This file
@@ -64,7 +64,7 @@ pip install -r python/requirements_full.txt
 
 ```bash
 cd python
-python train_models.py --data nizam_sample_training_data.csv --output models/
+python train_models.py --data system_sample_training_data.csv --output models/
 ```
 
 Expected output:
@@ -149,10 +149,10 @@ curl -X POST http://localhost:8000/predict \
 
 ```bash
 # Create the database
-psql -U postgres -c "CREATE DATABASE nizam;"
+psql -U postgres -c "CREATE DATABASE system;"
 
 # Run schema
-psql -U postgres -d nizam -f schema.sql
+psql -U postgres -d system -f schema.sql
 ```
 
 ---
@@ -191,7 +191,7 @@ The CSV file must contain:
 
 ## Clinical Disclaimer
 
-Nizam is a decision-support tool intended to assist health workers — not replace clinical judgment. All predictions should be validated by qualified health professionals before clinical decisions are made.
+system is a decision-support tool intended to assist health workers — not replace clinical judgment. All predictions should be validated by qualified health professionals before clinical decisions are made.
 
 ---
 
@@ -207,7 +207,7 @@ For support and contributions, please open an issue on the project repository.
 
 ## Advanced AI Features (v2.0)
 
-Nizam now includes advanced AI technologies for intelligent decision support:
+system now includes advanced AI technologies for intelligent decision support:
 
 ### RAG (Retrieval-Augmented Generation)
 - **Purpose**: Provides scientific evidence and treatment recommendations for each prediction.
@@ -225,7 +225,7 @@ Nizam now includes advanced AI technologies for intelligent decision support:
   - Lightweight inference for low-resource devices
 - **Integration**: Works alongside ML models for holistic child health assessment.
 
-### EnhancedNizam Pipeline
+### Enhancedsystem Pipeline
 - **Integration**: Combines XGBoost ML predictions + RAG evidence + BioBERT medical analysis.
 - **API Endpoint**: `GET /predict/enhanced`
 - **Output**: Comprehensive report with ML prediction, scientific evidence, and medical entities.

@@ -46,7 +46,7 @@ function App() {
                 />
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Brain className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium text-foreground">Nizam</span>
+                  <span className="text-sm font-medium text-foreground">system</span>
                   <span className="text-xs text-muted-foreground hidden sm:inline">Child Malnutrition Prediction System</span>
                 </div>
                 <div className="ml-auto flex items-center gap-2">

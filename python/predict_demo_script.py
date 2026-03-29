@@ -1,8 +1,8 @@
 """
-Nizam - Child Malnutrition Prediction System
+system - Child Malnutrition Prediction System
 Demo Prediction Script
 
-Demonstrates the prediction capabilities of trained Nizam models
+Demonstrates the prediction capabilities of trained system models
 with sample children data.
 
 Usage:
@@ -10,7 +10,7 @@ Usage:
     python predict_demo_script.py --model-dir models/
     python predict_demo_script.py --child-name "Amara" --age 18 --sex female --weight 8.5 --height 79.0 --muac 13.2
 
-Author: Nizam AI Team
+Author: system AI Team
 Version: 1.0.0
 """
 
@@ -21,13 +21,13 @@ import argparse
 import logging
 from typing import Dict, List, Optional
 
-from xgboost_model import NizamPredictor, PredictionResult, classify_risk
+from xgboost_model import systemPredictor, PredictionResult, classify_risk
 
 logging.basicConfig(level=logging.WARNING)
 
 BANNER = """
 ╔══════════════════════════════════════════════════════════════╗
-║          NIZAM - Child Malnutrition Prediction System        ║
+║          system - Child Malnutrition Prediction System        ║
 ║                    Demo Prediction Script                    ║
 ╚══════════════════════════════════════════════════════════════╝
 """
@@ -117,7 +117,7 @@ def colorize(text: str, risk: str) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Nizam malnutrition prediction demo",
+        description="system malnutrition prediction demo",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--model-dir", default="models", help="Model directory")
@@ -206,7 +206,7 @@ def print_batch_summary(results: List[PredictionResult]):
                 print(f"     → Underweight risk: {r.underweight_risk} ({r.underweight_probability:.1%})")
 
 
-def run_single_prediction(predictor: NizamPredictor, args: argparse.Namespace):
+def run_single_prediction(predictor: systemPredictor, args: argparse.Namespace):
     """Run prediction for a single child from command line args."""
     child_data = {
         "child_name": args.child_name or "Unknown",
@@ -221,7 +221,7 @@ def run_single_prediction(predictor: NizamPredictor, args: argparse.Namespace):
     return result
 
 
-def run_demo_batch(predictor: NizamPredictor) -> List[PredictionResult]:
+def run_demo_batch(predictor: systemPredictor) -> List[PredictionResult]:
     """Run predictions on all demo children."""
     print(f"\n  Running batch prediction on {len(DEMO_CHILDREN)} children...")
     results = []
@@ -241,19 +241,19 @@ def main():
     required_models = ["stunting", "wasting", "underweight"]
     missing_models = []
     for target in required_models:
-        model_path = os.path.join(model_dir, f"nizam_{target}_model.joblib")
+        model_path = os.path.join(model_dir, f"system_{target}_model.joblib")
         if not os.path.exists(model_path):
             missing_models.append(target)
 
     if missing_models:
         print(f"  ERROR: Missing trained models: {missing_models}")
         print(f"  Please run training first:")
-        print(f"    python train_models.py --data nizam_sample_training_data.csv")
+        print(f"    python train_models.py --data system_sample_training_data.csv")
         sys.exit(1)
 
     # Load models
-    print(f"  Loading Nizam models from: {model_dir}/")
-    predictor = NizamPredictor(model_dir=model_dir)
+    print(f"  Loading system models from: {model_dir}/")
+    predictor = systemPredictor(model_dir=model_dir)
     predictor.load_all()
     print(f"  Models loaded successfully.\n")
 
@@ -279,7 +279,7 @@ def main():
             json.dump(output_data, f, indent=2)
         print(f"\n  Results saved to: {args.output_json}")
 
-    print(f"\n  Nizam prediction complete.\n")
+    print(f"\n  system prediction complete.\n")
 
 
 if __name__ == "__main__":

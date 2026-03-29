@@ -1,11 +1,11 @@
 """
-Nizam Enhanced Prediction API
+system Enhanced Prediction API
 محطة API محسّنة للتنبؤ بسوء التغذية تجمع بين:
 - نموذج XGBoost للتنبؤ
 - نظام RAG للأدلة العلمية
 - BioBERT Mobile لاستخراج الكيانات الطبية
 - دليل المعرفة المحلي
-Author: Nizam AI Team
+Author: system AI Team
 Version: 2.0.0
 """
 import json
@@ -98,7 +98,7 @@ class ModelInput(BaseModel):
 
 # تهيئة التطبيق
 app = FastAPI(
-    title="Nizam Enhanced Prediction API",
+    title="system Enhanced Prediction API",
     description="""
     واجهة API محسّنة تجمع بين نماذج XGBoost ونظام RAG و BioBERT Mobile.
     ## المكوّنات
@@ -144,7 +144,7 @@ async def startup_event():
     """تهيئة الخدمات المحسّنة عند بدء التطبيق"""
     global rag_system, biobert
     logger.info("=" * 60)
-    logger.info(" Nizam Enhanced Prediction API starting up...")
+    logger.info(" system Enhanced Prediction API starting up...")
     logger.info(" Version: 2.0.0")
     logger.info("=" * 60)
 
@@ -172,7 +172,7 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    logger.info("Nizam Enhanced Prediction API shutting down.")
+    logger.info("system Enhanced Prediction API shutting down.")
 
 # =====================================================================
 # وظائف مساعدة

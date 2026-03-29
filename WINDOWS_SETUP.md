@@ -1,6 +1,6 @@
-# Nizam Windows Setup Guide
+# system Windows Setup Guide
 
-This guide walks you through setting up Nizam on Windows (10/11).
+This guide walks you through setting up system on Windows (10/11).
 
 ---
 
@@ -35,7 +35,7 @@ Or search for "PowerShell" in Start Menu.
 ### Step 2: Navigate to Project Folder
 
 ```cmd
-cd C:\path\to\nizam\python
+cd C:\path\to\system\python
 ```
 
 ### Step 3: Create a Virtual Environment
@@ -84,7 +84,7 @@ pip install psycopg2-binary
 ### Step 6: Train the Models
 
 ```cmd
-python train_models.py --data nizam_sample_training_data.csv --output models\
+python train_models.py --data system_sample_training_data.csv --output models\
 ```
 
 Expected output:
@@ -120,18 +120,18 @@ Open your browser: http://localhost:8000/docs
 3. Remember your password for the `postgres` user
 4. Default port: 5432
 
-### Create Nizam Database
+### Create system Database
 
 Open **pgAdmin 4** (installed with PostgreSQL) or use SQL Shell (psql):
 
 ```sql
-CREATE DATABASE nizam;
-\c nizam
+CREATE DATABASE system;
+\c system
 ```
 
 Then run the schema:
 ```cmd
-psql -U postgres -d nizam -f ..\schema.sql
+psql -U postgres -d system -f ..\schema.sql
 ```
 
 ### Environment Variables
@@ -139,10 +139,10 @@ psql -U postgres -d nizam -f ..\schema.sql
 Create a `.env` file in the `python/` folder:
 
 ```
-DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/nizam
-NIZAM_MODEL_DIR=models
-NIZAM_HOST=127.0.0.1
-NIZAM_PORT=8000
+DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/system
+system_MODEL_DIR=models
+system_HOST=127.0.0.1
+system_PORT=8000
 ```
 
 ---
@@ -173,7 +173,7 @@ uvicorn prediction_api:app --port 8001
 ### Model file not found
 Make sure you've run training first:
 ```cmd
-python train_models.py --data nizam_sample_training_data.csv
+python train_models.py --data system_sample_training_data.csv
 ```
 
 ---
@@ -184,7 +184,7 @@ After setup, test everything works:
 
 ```cmd
 # Test model training
-python train_models.py --data nizam_sample_training_data.csv --n-estimators 50
+python train_models.py --data system_sample_training_data.csv --n-estimators 50
 
 # Test prediction
 python predict_demo_script.py

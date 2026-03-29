@@ -1,7 +1,7 @@
-# Nizam - Child Malnutrition Prediction System
+# system - Child Malnutrition Prediction System
 
 ## Overview
-Nizam is a production-ready AI platform for predicting malnutrition (stunting, wasting, underweight) in children aged 0-60 months. It combines an XGBoost ML backend (Python) with a React dashboard frontend.
+system is a production-ready AI platform for predicting malnutrition (stunting, wasting, underweight) in children aged 0-60 months. It combines an XGBoost ML backend (Python) with a React dashboard frontend.
 
 ## Architecture
 
@@ -18,11 +18,11 @@ Nizam is a production-ready AI platform for predicting malnutrition (stunting, w
 - Simulated ML inference matching the Python XGBoost model's behavior
 
 ### Python ML Platform (in `python/`)
-- `xgboost_model.py` - Core ML classes (NizamModel, NizamPredictor, feature engineering)
+- `xgboost_model.py` - Core ML classes (systemModel, systemPredictor, feature engineering)
 - `train_models.py` - Training script with cross-validation, metrics, model saving
 - `predict_demo_script.py` - CLI demo with colored output for batch predictions
 - `prediction_api.py` - FastAPI REST API server for production deployment
-- `nizam_sample_training_data.csv` - 500-record labeled training dataset
+- `system_sample_training_data.csv` - 500-record labeled training dataset
 
 ### Documentation Files
 - `README.md` - Project overview and usage

@@ -99,7 +99,7 @@ export default function Documentation() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Documentation</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Complete guide for the Nizam malnutrition prediction platform
+          Complete guide for the system malnutrition prediction platform
         </p>
       </div>
 
@@ -156,14 +156,14 @@ export default function Documentation() {
                       <Brain className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">Nizam Platform Overview</CardTitle>
+                      <CardTitle className="text-lg">system Platform Overview</CardTitle>
                       <p className="text-sm text-muted-foreground">AI-powered child malnutrition prediction</p>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-foreground leading-relaxed">
-                    Nizam is an offline-first AI platform for predicting malnutrition — stunting, wasting, and underweight — in children aged 0–60 months. Built on XGBoost, it uses 16 engineered features derived from anthropometric measurements and WHO growth standards.
+                    system is an offline-first AI platform for predicting malnutrition — stunting, wasting, and underweight — in children aged 0–60 months. Built on XGBoost, it uses 16 engineered features derived from anthropometric measurements and WHO growth standards.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {[
@@ -231,7 +231,7 @@ pip install -r python/requirements_full.txt`} />
                   <Section title="2. Train Models">
                     <CodeBlock code={`cd python
 python train_models.py \\
-  --data nizam_sample_training_data.csv \\
+  --data system_sample_training_data.csv \\
   --output models/ \\
   --n-estimators 300 \\
   --save-report`} />
@@ -256,11 +256,11 @@ python train_models.py \\
                   <CardTitle className="text-base">Python API Reference</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  <Section title="NizamPredictor (Unified Predictor)">
-                    <CodeBlock code={`from xgboost_model import NizamPredictor
+                  <Section title="systemPredictor (Unified Predictor)">
+                    <CodeBlock code={`from xgboost_model import systemPredictor
 
 # Initialize and load all models
-predictor = NizamPredictor(model_dir="models")
+predictor = systemPredictor(model_dir="models")
 predictor.load_all()
 
 # Single child prediction
@@ -289,8 +289,8 @@ children = [
 ]
 results = predictor.batch_predict(children)`} language="python" />
                   </Section>
-                  <Section title="NizamModel (Individual Model)">
-                    <CodeBlock code={`from xgboost_model import NizamModel, ModelConfig
+                  <Section title="systemModel (Individual Model)">
+                    <CodeBlock code={`from xgboost_model import systemModel, ModelConfig
 
 # Configure model
 config = ModelConfig(
@@ -300,7 +300,7 @@ config = ModelConfig(
 )
 
 # Train a single model
-model = NizamModel(target="stunting", config=config)
+model = systemModel(target="stunting", config=config)
 metrics = model.train(df, target_column="is_stunted")
 
 print(f"AUC-ROC: {metrics.auc_roc:.4f}")
@@ -308,7 +308,7 @@ print(f"F1:      {metrics.f1:.4f}")
 
 # Save and load
 model.save("models/")
-model = NizamModel.load("stunting", "models/")`} language="python" />
+model = systemModel.load("stunting", "models/")`} language="python" />
                   </Section>
                   <Section title="WHO Z-Score Computation">
                     <CodeBlock code={`from xgboost_model import compute_anthropometric_indices
@@ -412,10 +412,10 @@ z_scores = compute_anthropometric_indices(
                 <CardContent className="space-y-5">
                   <Section title="Setup">
                     <CodeBlock code={`# Create database
-psql -U postgres -c "CREATE DATABASE nizam;"
+psql -U postgres -c "CREATE DATABASE system;"
 
 # Run schema
-psql -U postgres -d nizam -f schema.sql`} />
+psql -U postgres -d system -f schema.sql`} />
                   </Section>
                   <Section title="Tables">
                     <div className="space-y-2">
@@ -467,7 +467,7 @@ FROM predictions GROUP BY overall_risk;`} language="sql" />
                 <CardContent className="space-y-5">
                   <Section title="Training">
                     <CodeBlock code={`# Train all models (default)
-python train_models.py --data nizam_sample_training_data.csv
+python train_models.py --data system_sample_training_data.csv
 
 # Train specific model
 python train_models.py --target stunting
@@ -476,7 +476,7 @@ python train_models.py --target underweight
 
 # Full options
 python train_models.py \\
-  --data nizam_sample_training_data.csv \\
+  --data system_sample_training_data.csv \\
   --output models/ \\
   --n-estimators 300 \\
   --max-depth 5 \\
@@ -506,13 +506,13 @@ uvicorn prediction_api:app \\
   --host 0.0.0.0 --port 8000 --workers 4
 
 # With environment variables
-NIZAM_MODEL_DIR=models NIZAM_PORT=8080 \\
+system_MODEL_DIR=models system_PORT=8080 \\
   uvicorn prediction_api:app`} />
                   </Section>
                   <Section title="Quick Pipeline">
                     <CodeBlock code={`# Full pipeline in one command
 cd python && \\
-  python train_models.py --data nizam_sample_training_data.csv && \\
+  python train_models.py --data system_sample_training_data.csv && \\
   python predict_demo_script.py && \\
   uvicorn prediction_api:app --port 8000`} />
                   </Section>

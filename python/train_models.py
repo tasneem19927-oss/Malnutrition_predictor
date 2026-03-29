@@ -1,15 +1,15 @@
 """
-Nizam - Child Malnutrition Prediction System
+system - Child Malnutrition Prediction System
 Model Training Script
 
 This script trains three XGBoost models (stunting, wasting, underweight)
-on the Nizam sample training dataset.
+on the system sample training dataset.
 
 Usage:
-    python train_models.py --data nizam_sample_training_data.csv --output models/
+    python train_models.py --data system_sample_training_data.csv --output models/
     python train_models.py --help
 
-Author: Nizam AI Team
+Author: system AI Team
 Version: 1.0.0
 """
 
@@ -21,7 +21,7 @@ import logging
 import argparse
 import warnings
 from pathlib import Path
-from rag_system import NizamRAG
+from rag_system import systemRAG
 from biobert_mobile import BioBERTMobile
 
 import numpy as np
@@ -38,7 +38,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 from xgboost_model import (
-    NizamModel, ModelConfig, engineer_features,
+    systemModel, ModelConfig, engineer_features,
     classify_risk, FEATURE_COLUMNS
 )
 
@@ -49,11 +49,11 @@ logging.basicConfig(
         logging.StreamHandler(sys.stdout),
     ]
 )
-logger = logging.getLogger("nizam.train")
+logger = logging.getLogger("system.train")
 
 BANNER = """
 ╔══════════════════════════════════════════════════════════════╗
-║          NIZAM - Child Malnutrition Prediction System        ║
+║          system - Child Malnutrition Prediction System        ║
 ║                     Model Training Script                    ║
 ║                          v1.0.0                              ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -68,13 +68,13 @@ TARGET_COLUMNS = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Train Nizam malnutrition prediction models",
+        description="Train system malnutrition prediction models",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
         "--data",
         type=str,
-        default="nizam_sample_training_data.csv",
+        default="system_sample_training_data.csv",
         help="Path to training data CSV"
     )
     parser.add_argument(
@@ -201,7 +201,7 @@ def train_single_model(
     config: ModelConfig,
     cv_folds: int,
     verbose: bool = False
-) -> NizamModel:
+) -> systemModel:
     """Train a single malnutrition model with cross-validation."""
 
     target_col = TARGET_COLUMNS[target]
@@ -210,7 +210,7 @@ def train_single_model(
     logger.info(f"Target column : {target_col}")
     logger.info(f"Positive cases: {int(df[target_col].sum())} / {len(df)}")
 
-    model = NizamModel(target=target, config=config)
+    model = systemModel(target=target, config=config)
 
     start_time = time.time()
     metrics = model.train(df, target_col)
@@ -242,7 +242,7 @@ def save_training_report(
 ):
     """Save a comprehensive training report to JSON."""
     report = {
-        "nizam_version": "1.0.0",
+        "system_version": "1.0.0",
         "trained_at": pd.Timestamp.now().isoformat(),
         "training_data": data_path,
         "total_records": total_records,
@@ -365,13 +365,13 @@ if __name__ == "__main__":
 
 
 # ==============================================================================
-# ENHANCED NIZAM CLASS - RAG + BioBERT Integration
+# ENHANCED system CLASS - RAG + BioBERT Integration
 # ==============================================================================
 
-class EnhancedNizam:
+class Enhancedsystem:
     def __init__(self):
         self.ml_models = self.load_ml_models()
-        self.rag_system = NizamRAG()
+        self.rag_system = systemRAG()
         self.biobert_mobile = BioBERTMobile()
 
     def load_ml_models(self):

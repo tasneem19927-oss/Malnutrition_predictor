@@ -67,7 +67,7 @@ export function AppSidebar() {
             <Brain className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <div className="font-bold text-sidebar-foreground text-lg leading-tight tracking-tight">Nizam</div>
+            <div className="font-bold text-sidebar-foreground text-lg leading-tight tracking-tight">system</div>
             <div className="text-xs text-muted-foreground leading-tight">Malnutrition AI Platform</div>
           </div>
         </div>

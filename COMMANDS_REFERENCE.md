@@ -1,6 +1,6 @@
-# Nizam Commands Reference
+# system Commands Reference
 
-Quick reference for all Nizam CLI commands and API calls.
+Quick reference for all system CLI commands and API calls.
 
 ---
 
@@ -32,13 +32,13 @@ deactivate
 
 ### Basic Training
 ```bash
-python train_models.py --data nizam_sample_training_data.csv
+python train_models.py --data system_sample_training_data.csv
 ```
 
 ### Full Options
 ```bash
 python train_models.py \
-  --data nizam_sample_training_data.csv \
+  --data system_sample_training_data.csv \
   --output models/ \
   --target all \
   --n-estimators 300 \
@@ -121,9 +121,9 @@ gunicorn prediction_api:app \
 
 ### Environment Variables
 ```bash
-export NIZAM_MODEL_DIR=models
-export NIZAM_HOST=0.0.0.0
-export NIZAM_PORT=8000
+export system_MODEL_DIR=models
+export system_HOST=0.0.0.0
+export system_PORT=8000
 uvicorn prediction_api:app
 ```
 
@@ -194,13 +194,13 @@ curl http://localhost:8000/stats
 ### Setup PostgreSQL Database
 ```bash
 # Create database
-psql -U postgres -c "CREATE DATABASE nizam;"
+psql -U postgres -c "CREATE DATABASE system;"
 
 # Run schema
-psql -U postgres -d nizam -f schema.sql
+psql -U postgres -d system -f schema.sql
 
 # Connect to database
-psql -U postgres -d nizam
+psql -U postgres -d system
 ```
 
 ### Common SQL Queries
@@ -227,10 +227,10 @@ ORDER BY AVG(stunting_probability) DESC;
 ## Python API (Direct Usage)
 
 ```python
-from xgboost_model import NizamPredictor
+from xgboost_model import systemPredictor
 
 # Load models
-predictor = NizamPredictor(model_dir="models")
+predictor = systemPredictor(model_dir="models")
 predictor.load_all()
 
 # Single prediction
@@ -295,11 +295,11 @@ overall = get_overall_risk("high", "moderate", "low")  # "high"
 
 | File | Description |
 |------|-------------|
-| `python/models/nizam_stunting_model.joblib` | Trained stunting model |
-| `python/models/nizam_wasting_model.joblib` | Trained wasting model |
-| `python/models/nizam_underweight_model.joblib` | Trained underweight model |
+| `python/models/system_stunting_model.joblib` | Trained stunting model |
+| `python/models/system_wasting_model.joblib` | Trained wasting model |
+| `python/models/system_underweight_model.joblib` | Trained underweight model |
 | `python/models/training_report.json` | Training metrics report |
-| `python/nizam_sample_training_data.csv` | 500-record training dataset |
+| `python/system_sample_training_data.csv` | 500-record training dataset |
 | `schema.sql` | Database schema |
 
 ---
@@ -309,7 +309,7 @@ overall = get_overall_risk("high", "moderate", "low")  # "high"
 ```bash
 # Quick full pipeline
 cd python && \
-python train_models.py --data nizam_sample_training_data.csv && \
+python train_models.py --data system_sample_training_data.csv && \
 python predict_demo_script.py && \
 uvicorn prediction_api:app --port 8000
 

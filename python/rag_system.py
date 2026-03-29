@@ -1,9 +1,9 @@
 """
-Nizam RAG System
+system RAG System
 استرجاع الأدلة العلمية والتوصيات الطبية للمساعدة في تشخيص سوء التغذية
 يعمل Offline بدون إنترنت - مناسب للبيئات محدودة الموارد
 
-Author: Nizam AI Team
+Author: system AI Team
 Version: 2.0.0
 """
 
@@ -22,7 +22,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s - %(message)s"
 )
-logger = logging.getLogger("nizam.rag")
+logger = logging.getLogger("system.rag")
 
 # =============================================================================
 # Data Models
@@ -78,10 +78,10 @@ class RAGResponse:
             "arabic_summary": self.arabic_s
 
 # =============================================================================
-# Nizam RAG System - Main Class
+# system RAG System - Main Class
 # =============================================================================
 
-class NizamRAG:
+class systemRAG:
     """
     نظام استرجاع الأدلة العلمية (RAG) للتنبؤ بسوء التغذية.
     يستخدم SentenceTransformers متعدد اللغات + FAISS للبحث السريع.
@@ -89,15 +89,15 @@ class NizamRAG:
     """
 
     # مسار قاعدة المعرفة - يُحدَّد عبر متغير البيئة
-    KB_PATH = os.environ.get("NIZAM_KB_PATH", "python/knowledge_base.json")
-    INDEX_PATH = os.environ.get("NIZAM_INDEX_PATH", "python/rag_faiss_index.index")
+    KB_PATH = os.environ.get("system_KB_PATH", "python/knowledge_base.json")
+    INDEX_PATH = os.environ.get("system_INDEX_PATH", "python/rag_faiss_index.index")
 
     def __init__(self, kb_path: str = None, index_path: str = None):
         self.kb_path = kb_path or self.KB_PATH
         self.index_path = index_path or self.INDEX_PATH
 
         logger.info("=" * 50)
-        logger.info(" Nizam RAG System initializing...")
+        logger.info(" system RAG System initializing...")
         logger.info(f" Knowledge base: {self.kb_path}")
         logger.info(f" FAISS index: {self.index_path}")
         logger.info("=" * 50)
@@ -115,7 +115,7 @@ class NizamRAG:
 
         self._load_knowledge_base()
         self._build_or_load_index()
-        logger.info("Nizam RAG ready!")
+        logger.info("system RAG ready!")
 
     def _load_knowledge_base(self):
         """
@@ -606,11 +606,11 @@ class NizamRAG:
 # =============================================================================
 
 if __name__ == "__main__":
-    print("Testing Nizam RAG System...")
+    print("Testing system RAG System...")
     print("=" * 50)
 
     # اختبار النظام
-    rag = NizamRAG()
+    rag = systemRAG()
 
     # بيانات اختبار
     test_child = {
@@ -639,6 +639,6 @@ if __name__ == "__main__":
     print("\n" + response.arabic_summary)
 
     print("\n" + "=" * 50)
-    print("Nizam RAG System test completed successfully!")
+    print("system RAG System test completed successfully!")
             "confidence": self.confidence
         }

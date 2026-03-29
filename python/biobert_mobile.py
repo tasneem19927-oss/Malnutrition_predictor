@@ -1,9 +1,9 @@
 """
-Nizam BioBERT Mobile
+system BioBERT Mobile
 نموذج BERT طبي محمول لمعالجة النصوص الطبية واستخراج الكيانات
 يدعم العربية والإنجليزية - مبني على MobileBERT للبيئات محدودة الموارد
 
-Author: Nizam AI Team
+Author: system AI Team
 Version: 2.0.0
 """
 
@@ -430,7 +430,7 @@ class BioBERTMobileWithPreloaded:
 # دالة مساعدة لاستخدام النظام بشكل مباشر
 if __name__ == '__main__':
     print("=" * 50)
-    print("Nizam BioBERT Mobile - اختبار النظام")
+    print("system BioBERT Mobile - اختبار النظام")
     print("=" * 50)
 
     biobert = BioBERTMobile()

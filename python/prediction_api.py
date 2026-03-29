@@ -1,8 +1,8 @@
 """
-Nizam - Child Malnutrition Prediction System
+system - Child Malnutrition Prediction System
 Prediction REST API
 
-A production-ready REST API using FastAPI that exposes Nizam's
+A production-ready REST API using FastAPI that exposes system's
 XGBoost malnutrition prediction models over HTTP.
 
 Endpoints:
@@ -22,7 +22,7 @@ Usage:
     # With gunicorn
     gunicorn prediction_api:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
 
-Author: Nizam AI Team
+Author: system AI Team
 Version: 1.0.0
 """
 
@@ -39,8 +39,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
 import uvicorn
 
-from xgboost_model import NizamPredictor, PredictionResult
-from rag_system import NizamRAG
+from xgboost_model import systemPredictor, PredictionResult
+from rag_system import systemRAG
 from biobert_mobile import BioBERTMobile
 from enhanced_prediction_api import EnhancedPredictionAPI
 
@@ -49,19 +49,19 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s - %(message)s"
 )
-logger = logging.getLogger("nizam.api")
+logger = logging.getLogger("system.api")
 
 # API Configuration
 API_VERSION = "1.0.0"
-MODEL_DIR = os.environ.get("NIZAM_MODEL_DIR", "models")
-HOST = os.environ.get("NIZAM_HOST", "0.0.0.0")
-PORT = int(os.environ.get("NIZAM_PORT", "8000"))
+MODEL_DIR = os.environ.get("system_MODEL_DIR", "models")
+HOST = os.environ.get("system_HOST", "0.0.0.0")
+PORT = int(os.environ.get("system_PORT", "8000"))
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Nizam Child Malnutrition Prediction API",
+    title="system Child Malnutrition Prediction API",
     description="""
-    Nizam is an AI-powered child malnutrition prediction system that uses
+    system is an AI-powered child malnutrition prediction system that uses
     XGBoost to predict stunting, wasting, and underweight in children aged 0-60 months.
 
     ## Features
@@ -87,7 +87,7 @@ app.add_middleware(
 )
 
 # Global state
-predictor: Optional[NizamPredictor] = None
+predictor: Optional[systemPredictor] = None
 prediction_count = 0
 api_start_time = datetime.now()
 
@@ -212,13 +212,13 @@ async def startup_event():
     """Load models on API startup."""
     global predictor, enhanced_api
     logger.info("=" * 60)
-    logger.info("  Nizam Prediction API starting up...")
+    logger.info("  system Prediction API starting up...")
     logger.info(f"  Version: {API_VERSION}")
     logger.info(f"  Model directory: {MODEL_DIR}")
     logger.info("=" * 60)
 
     try:
-        predictor = NizamPredictor(model_dir=MODEL_DIR)
+        predictor = systemPredictor(model_dir=MODEL_DIR)
         predictor.load_all()
                 try:
             enhanced_api = EnhancedPredictionAPI()
@@ -234,7 +234,7 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    logger.info("Nizam API shutting down.")
+    logger.info("system API shutting down.")
 
 
 # =====================================================================
@@ -276,7 +276,7 @@ def result_to_response(result: PredictionResult) -> PredictionResponse:
     )
 
 
-def get_predictor() -> NizamPredictor:
+def get_predictor() -> systemPredictor:
     if predictor is None or not predictor.models:
         raise HTTPException(
             status_code=503,
@@ -409,7 +409,7 @@ async def get_stats():
 async def root():
     """API root - returns basic information."""
     return {
-        "name": "Nizam Child Malnutrition Prediction API",
+        "name": "system Child Malnutrition Prediction API",
         "version": API_VERSION,
         "description": "AI-powered malnutrition prediction for children aged 0-60 months",
         "endpoints": {

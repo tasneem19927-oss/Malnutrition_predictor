@@ -1,4 +1,4 @@
-# Nizam - Child Malnutrition Prediction System
+# system - Child Malnutrition Prediction System
 # Full Requirements File
 # Python 3.8+ required
 

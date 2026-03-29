@@ -91,7 +91,7 @@ export default function DataExplorer() {
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Data Explorer</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Explore the Nizam training dataset — {TOTAL_RECORDS.toLocaleString()} child records
+            Explore the system training dataset — {TOTAL_RECORDS.toLocaleString()} child records
           </p>
         </div>
         <Button variant="outline" data-testid="button-download">
@@ -196,7 +196,7 @@ export default function DataExplorer() {
             <div>
               <CardTitle className="text-base">Training Records</CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Showing sample of {TOTAL_RECORDS.toLocaleString()} records from nizam_sample_training_data.csv
+                Showing sample of {TOTAL_RECORDS.toLocaleString()} records from system_sample_training_data.csv
               </p>
             </div>
             <div className="flex gap-2">

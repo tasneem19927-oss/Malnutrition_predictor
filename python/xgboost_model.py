@@ -1,11 +1,11 @@
 """
-Nizam - Child Malnutrition Prediction System
+system - Child Malnutrition Prediction System
 XGBoost Model Utilities
 
 This module provides utilities for training, saving, loading,
 and evaluating XGBoost models for malnutrition prediction.
 
-Author: Nizam AI Team
+Author: system AI Team
 Version: 1.0.0
 """
 
@@ -149,7 +149,7 @@ class PredictionResult:
         risk_icons = {"low": "✓", "moderate": "⚠", "high": "!", "critical": "✗"}
 
         print("\n" + "=" * 60)
-        print("  NIZAM PREDICTION RESULT")
+        print("  system PREDICTION RESULT")
         print("=" * 60)
         print(f"  Child    : {self.child_name}")
         print(f"  Age      : {self.age_months} months")
@@ -313,9 +313,9 @@ FEATURE_COLUMNS = [
 ]
 
 
-class NizamModel:
+class systemModel:
     """
-    Nizam XGBoost model wrapper for malnutrition prediction.
+    system XGBoost model wrapper for malnutrition prediction.
 
     Supports training, evaluation, saving, loading, and prediction
     for three targets: stunting, wasting, and underweight.
@@ -337,7 +337,7 @@ class NizamModel:
         self.feature_columns = FEATURE_COLUMNS
         self.metrics: Optional[ModelMetrics] = None
         self.version = "1.0.0"
-        logger.info(f"NizamModel initialized for target: {target}")
+        logger.info(f"systemModel initialized for target: {target}")
 
     def _build_model(self) -> xgb.XGBClassifier:
         params = self.config.to_xgb_params()
@@ -431,7 +431,7 @@ class NizamModel:
         if self.model is None:
             raise ValueError("No model to save.")
         os.makedirs(directory, exist_ok=True)
-        filepath = os.path.join(directory, f"nizam_{self.target}_model.joblib")
+        filepath = os.path.join(directory, f"system_{self.target}_model.joblib")
         metadata = {
             "target": self.target,
             "version": self.version,
@@ -451,9 +451,9 @@ class NizamModel:
         return filepath
 
     @classmethod
-    def load(cls, target: str, directory: str = "models") -> "NizamModel":
+    def load(cls, target: str, directory: str = "models") -> "systemModel":
         """Load a saved model from disk."""
-        filepath = os.path.join(directory, f"nizam_{target}_model.joblib")
+        filepath = os.path.join(directory, f"system_{target}_model.joblib")
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Model file not found: {filepath}")
         saved = joblib.load(filepath)
@@ -469,21 +469,21 @@ class NizamModel:
         return instance
 
 
-class NizamPredictor:
+class systemPredictor:
     """
-    Unified predictor that combines all three Nizam models
+    Unified predictor that combines all three system models
     (stunting, wasting, underweight) into a single prediction call.
     """
 
     def __init__(self, model_dir: str = "models"):
         self.model_dir = model_dir
-        self.models: Dict[str, NizamModel] = {}
+        self.models: Dict[str, systemModel] = {}
 
     def load_all(self):
         """Load all three models from disk."""
         for target in ("stunting", "wasting", "underweight"):
-            self.models[target] = NizamModel.load(target, self.model_dir)
-        logger.info("All Nizam models loaded successfully.")
+            self.models[target] = systemModel.load(target, self.model_dir)
+        logger.info("All system models loaded successfully.")
 
     def predict(self, child_data: Dict) -> PredictionResult:
         """

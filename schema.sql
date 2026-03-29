@@ -1,5 +1,5 @@
 -- ============================================================
--- Nizam Child Malnutrition Prediction System
+-- system Child Malnutrition Prediction System
 -- Database Schema (PostgreSQL)
 -- ============================================================
 

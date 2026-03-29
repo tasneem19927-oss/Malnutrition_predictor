@@ -13,7 +13,7 @@ import { randomUUID } from "crypto";
 const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8000";
 const PYTHON_API_TIMEOUT = parseInt(process.env.PYTHON_API_TIMEOUT || "30000");
 const FALLBACK_SIMULATION = process.env.FALLBACK_SIMULATION !== "false";
-const SESSION_SECRET = process.env.SESSION_SECRET || "nizam-predictor-dev-secret-change-in-prod";
+const SESSION_SECRET = process.env.SESSION_SECRET || "system-predictor-dev-secret-change-in-prod";
 
 // WHO reference data for z-score approximation (fallback)
 const WHO_HAZ_MEDIAN: Record<number, Record<string, number>> = {
@@ -169,7 +169,7 @@ export function registerRoutes(app: Express, server: Server) {
   });
 
   app.use("/api/predict", (req: Request, res: Response, next: NextFunction) => {
-    res.setHeader("X-Powered-By", "Nizam-Predictor");
+    res.setHeader("X-Powered-By", "system-Predictor");
     next();
   });
 
