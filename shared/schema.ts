@@ -3,21 +3,64 @@ import { pgTable, text, varchar, real, boolean, timestamp, integer } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// ============================================
+// Role-Based Access Control
+// ============================================
+export type UserRole = "admin" | "health_worker" | "doctor";
+
+export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  admin: [
+    "view_statistics",
+    "manage_users",
+    "view_records",
+    "create_records",
+    "review_cases",
+    "write_recommendations",
+    "export_data",
+    "view_dashboard",
+  ],
+  health_worker: [
+    "create_records",
+    "view_records",
+    "export_data",
+    "view_dashboard",
+  ],
+  doctor: [
+    "view_records",
+    "review_cases",
+    "write_recommendations",
+    "view_dashboard",
+  ],
+};
+
+export const USERS_DEFAULT_ADMIN = {
+  username: "admin",
+  password: "admin",
+  role: "admin" as UserRole,
+};
+
+// ============================================
+// Users Table
+// ============================================
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-          role: varchar("role").notNull().default("user").$type<"admin" | "health" | "doctor">(),
+  role: varchar("role", { length: 30 }).notNull().default("health_worker").$type<UserRole>(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
-          role: true,
+  role: true,
 });
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+// ============================================
+// Predictions Table
+// ============================================
 export const predictions = pgTable("predictions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   childName: text("child_name").notNull(),
