@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,16 +12,8 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { isAuthenticated, isLoading, login, isAdmin, isHealthWorker, isDoctor } = useAuth();
+  const { isAuthenticated, isLoading, login } = useAuth();
   const [, navigate] = useLocation();
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      if (isAdmin) navigate("/admin");
-      else if (isHealthWorker || isDoctor) navigate("/health");
-      else navigate("/");
-    }
-  }, [isAuthenticated, isLoading, isAdmin, isHealthWorker, isDoctor, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
