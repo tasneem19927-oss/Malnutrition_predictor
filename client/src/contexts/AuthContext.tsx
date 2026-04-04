@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 
-type UserRole = "admin" | "health" | "doctor";
+type UserRole = "admin" | "health_worker" | "doctor";
 
 interface AuthState {
   user: User | null;
@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: isLoading || loginMutation.isPending,
     isAuthenticated: !!user,
     isAdmin: user?.role === "admin",
-    isHealthWorker: user?.role === "health",
+    isHealthWorker: user?.role === "health_worker",
     isDoctor: user?.role === "doctor",
     login,
     logout,
