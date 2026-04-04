@@ -39,7 +39,7 @@ export function AppSidebar() {
     
     if (isHealthWorker || isDoctor) {
       return [
-        { title: "لوحة التحكم", url: "/health-dashboard", icon: LayoutDashboard },
+        { title: "لوحة التحكم", url: "/health", icon: LayoutDashboard },
         { title: "التنبؤ بالتغذية", url: "/predict", icon: Brain },
         { title: "السجل الصحي", url: "/history", icon: ClipboardList },
       ];
