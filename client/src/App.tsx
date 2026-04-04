@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,27 +10,84 @@ import Predict from "@/pages/predict";
 import History from "@/pages/history";
 import DataExplorer from "@/pages/data-explorer";
 import Documentation from "@/pages/documentation";
+import AdminDashboard from "@/pages/admin-dashboard";
+import HealthDashboard from "@/pages/health-dashboard";
+import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
-import { Brain } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Brain, Loader2 } from "lucide-react";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
+      <Route path="/login" component={Login} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/health" component={HealthDashboard} />
       <Route path="/predict" component={Predict} />
       <Route path="/history" component={History} />
       <Route path="/data" component={DataExplorer} />
       <Route path="/docs" component={Documentation} />
+      <Route path="/" component={Dashboard} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
+function ProtectedRouter() {
+  const { isAuthenticated, isLoading, isAdmin, isHealthWorker, isDoctor } = useAuth();
+  const [, navigate] = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    navigate("/login");
+    return null;
+  }
+
+  if (isAdmin) {
+    navigate("/admin");
+    return null;
+  }
+
+  if (isHealthWorker || isDoctor) {
+    navigate("/health");
+    return null;
+  }
+
+  navigate("/");
+  return null;
+}
+
 function App() {
+  const { isAuthenticated, isLoading, isAdmin, isHealthWorker, isDoctor } = useAuth();
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3.5rem",
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/login" component={Login} />
+        <Route path="/" component={Login} />
+        <Route component={Login} />
+      </Switch>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
