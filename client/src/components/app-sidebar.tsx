@@ -11,107 +11,113 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
+import { LayoutDashboard, Activity, ClipboardList, Database, BookOpen, Brain, Users, UserCog, Settings, Stethoscope } from "lucide-react";
 import {
-  LayoutDashboard,
-  Activity,
-  ClipboardList,
-  Database,
-  BookOpen,
-  Brain,
-  ChevronRight,
-} from "lucide-react";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-const navItems = [
-  {
-    title: "Dashboard",
-    url: "/",
-    icon: LayoutDashboard,
-    description: "Overview & stats",
-  },
-  {
-    title: "Predict",
-    url: "/predict",
-    icon: Activity,
-    badge: "AI",
-    description: "Run a prediction",
-  },
-  {
-    title: "History",
-    url: "/history",
-    icon: ClipboardList,
-    description: "Prediction records",
-  },
-  {
-    title: "Data Explorer",
-    url: "/data",
-    icon: Database,
-    description: "Training dataset",
-  },
-  {
-    title: "Documentation",
-    url: "/docs",
-    icon: BookOpen,
-    description: "Guides & API",
-  },
-];
-
 export function AppSidebar() {
-  const [location] = useLocation();
+  const { user, logout, isAdmin, isHealthWorker, isDoctor } = useAuth();
+  const location = useLocation();
+
+  // Determine which nav items to show based on role
+  const getNavItems = () => {
+    if (isAdmin) {
+      return [
+        { title: "لوحة التحكم", url: "/admin", icon: UserCog },
+        { title: "إدارة المستخدمين", url: "/admin/users", icon: Users },
+        { title: "إدارة البيانات", url: "/admin/data", icon: Database },
+      ];
+    }
+    
+    if (isHealthWorker || isDoctor) {
+      return [
+        { title: "لوحة التحكم", url: "/health-dashboard", icon: LayoutDashboard },
+        { title: "التنبؤ بالتغذية", url: "/predict", icon: Brain },
+        { title: "السجل الصحي", url: "/history", icon: ClipboardList },
+      ];
+    }
+
+    return [];
+  };
+
+  const navItems = getNavItems();
 
   return (
     <Sidebar>
-      <SidebarHeader className="px-4 py-5 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-primary flex items-center justify-center flex-shrink-0">
-            <Brain className="w-5 h-5 text-primary-foreground" />
+      <SidebarHeader className="px-4 py-3 border-b border-sidebar-border">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center">
+            <Brain className="w-4 h-4 text-sidebar-accent-foreground" />
           </div>
           <div>
-            <div className="font-bold text-sidebar-foreground text-lg leading-tight tracking-tight">system</div>
-            <div className="text-xs text-muted-foreground leading-tight">Malnutrition AI Platform</div>
+            <div className="text-sm font-medium text-sidebar-foreground">
+              مالنيوتريشن بريديكتور
+            </div>
+            <div className="text-xs text-muted-foreground">
+              نظام تنبؤ سوء التغذية
+            </div>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-2 py-3">
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">
-            Navigation
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-0.5">
-              {navItems.map((item) => {
-                const isActive = location === item.url || (item.url !== "/" && location.startsWith(item.url));
-                return (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton
-                      asChild
-                      data-active={isActive}
-                      className={`h-10 px-3 rounded-md transition-colors ${
-                        isActive
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                          : "text-sidebar-foreground"
-                      }`}
-                    >
-                      <Link href={item.url}>
-                        <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-sidebar-accent-foreground" : "text-muted-foreground"}`} />
-                        <span className="flex-1 text-sm">{item.title}</span>
-                        {item.badge && (
-                          <Badge variant="secondary" className="text-xs h-5 px-1.5">
-                            {item.badge}
-                          </Badge>
-                        )}
-                        {isActive && (
-                          <ChevronRight className="w-3.5 h-3.5 text-sidebar-accent-foreground opacity-60" />
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="py-2">
+        {user && navItems.length > 0 && (
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel>القائمة الرئيسية</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-0.5">
+                  {navItems.map((item) => {
+                    const isActive = location === item.url || (item.url !== "/" && location.startsWith(item.url));
+                    return (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton
+                          asChild
+                          data-active={isActive}
+                          className={`h-10 px-3 rounded-md transition-colors ${isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground"}`}
+                        >
+                          <Link href={item.url}>
+                            <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-sidebar-accent-foreground" : "text-muted-foreground"}`} />
+                            <span className="flex-1 text-sm">{item.title}</span>
+                            {isActive && (
+                              <ChevronRight className="w-3.5 h-3.5 text-sidebar-accent-foreground opacity-60" />
+                            )}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {isHealthWorker || isDoctor ? (
+              <SidebarGroup>
+                <SidebarGroupLabel>الإضافات</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="gap-0.5">
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild className="h-10 px-3 rounded-md transition-colors text-sidebar-foreground">
+                        <Link href="/docs">
+                          <BookOpen className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                          <span className="flex-1 text-sm">التوثيق</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ) : null}
+          </>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="px-4 py-4 border-t border-sidebar-border">
