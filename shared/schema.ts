@@ -99,4 +99,47 @@ export const predictionInputSchema = z.object({
 
 export type InsertPrediction = z.infer<typeof insertPredictionSchema>;
 export type Prediction = typeof predictions.$inferSelect;
+
+  // ============================================
+// Enhanced Prediction (Clinical RAG)
+// ============================================
+
+export const clinicalRAGSummarySchema = z.object({
+  priority_condition: z.string().nullable().optional(),
+  summary: z.string(),
+  rationale: z.string(),
+  red_flags: z.array(z.string()),
+  suggested_action: z.string(),
+  citations: z.array(z.string()),
+  evidence: z.array(z.object({
+    chunk_id: z.string(),
+    title: z.string(),
+    source: z.string(),
+    source_type: z.string(),
+    year: z.number(),
+    url: z.string(),
+    topic: z.string(),
+    severity: z.string(),
+    population: z.string(),
+    excerpt: z.string(),
+  })),
+  generated_at: z.string(),
+});
+
+export const evidenceBundleItemSchema = z.object({
+  chunk_id: z.string(),
+  title: z.string(),
+  source: z.string(),
+  source_type: z.string(),
+  year: z.number(),
+  url: z.string(),
+  topic: z.string(),
+  severity: z.string(),
+  population: z.string(),
+  excerpt: z.string(),
+});
+
+export type ClinicalRAGSummary = z.infer<typeof clinicalRAGSummarySchema>;
+export type EvidenceBundleItem = z.infer<typeof evidenceBundleItemSchema>;
+
 export type PredictionInput = z.infer<typeof predictionInputSchema>;
