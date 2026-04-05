@@ -17,10 +17,14 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { predictionInputSchema, type PredictionInput, type Prediction } from "@shared/schema";
+import {
+  predictionInputSchema, type PredictionInput, type Prediction,
+  type ClinicalRAGSummary, type EvidenceBundleItem
+} from "@shared/schema";
 import {
   Activity, Brain, AlertTriangle, CheckCircle2, Ruler,
-  Scale, Maximize2, RotateCcw, ChevronRight, TrendingDown, Info
+  Scale, Maximize2, RotateCcw, ChevronRight, TrendingDown, Info,
+  BookOpen, FileText, ShieldAlert, Stethoscope, ExternalLink, Clock
 } from "lucide-react";
 
 const REGIONS = [
@@ -108,7 +112,7 @@ function RiskCard({
     <div className={`rounded-lg border p-4 ${cfg.bg} ${cfg.border}`}>
       <div className="flex items-center gap-2 mb-3">
         <div className="flex items-center gap-2 flex-1">
-          <Icon className={`w-4 h-4 ${cfg.text}`} />
+          <RIcon className={`w-4 h-4 ${cfg.text}`} />
           <span className="text-sm font-medium text-foreground">{label}</span>
         </div>
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.text} border ${cfg.border}`}>
@@ -120,12 +124,101 @@ function RiskCard({
   );
 }
 
-function ResultPanel({ prediction }: { prediction: Prediction }) {
-  const overall = RISK_CONFIG[prediction.overallRisk] || RISK_CONFIG.low;
-  const OverallIcon = overall.icon;
+interface EnhancedPrediction {
+  childName: string;
+  ageMonths: number;
+  sex: string;
+  weightKg: number;
+  heightCm: number;
+  muacCm: number;
+  stuntingProbability: number;
+  wastingProbability: number;
+  underweightProbability: number;
+  stuntingRisk: string;
+  wastingRisk: string;
+  underweightRisk: string;
+  overallRisk: string;
+  clinicalRagSummary?: ClinicalRAGSummary;
+  evidenceBundle?: EvidenceBundleItem[];
+  safetyNotice?: string;
+  predictedAt?: string;
+}
+
+function EvidenceCard({ evidence }: { evidence: EvidenceBundleItem }) {
+  const severityColors: Record<string, string> = {
+    low: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300",
+    moderate: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+    high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+    critical: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
+    any: "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-300",
+  };
+
+  const sourceTypeIcons: Record<string, React.ElementType> = {
+    WHO: ShieldAlert,
+    Guideline: BookOpen,
+    Review: FileText,
+    RCT: Stethoscope,
+    Protocol: CheckCircle2,
+  };
+  const SourceIcon = sourceTypeIcons[evidence.source_type] || FileText;
 
   return (
-    <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3 hover:border-primary/50 transition-colors">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <SourceIcon className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-semibold text-foreground">{evidence.title}</span>
+        </div>
+        <Badge
+          variant="outline"
+          className={severityColors[evidence.severity.toLowerCase()] || severityColors.any}
+        >
+          {evidence.severity}
+        </Badge>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <Badge variant="secondary" className="bg-primary/10 text-primary">
+          {evidence.source_type}
+        </Badge>
+        <span>{evidence.source} • {evidence.year}</span>
+        <Badge variant="outline">{evidence.topic}</Badge>
+        <Badge variant="outline">{evidence.population}</Badge>
+      </div>
+      <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+        {evidence.excerpt}
+      </p>
+      {evidence.url && (
+        <a
+          href={evidence.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+        >
+          <ExternalLink className="w-3 h-3" />
+          View source
+        </a>
+      )}
+    </div>
+  );
+}
+
+function ClinicalBriefPanel({
+  prediction,
+  summary,
+  evidenceBundle,
+  safetyNotice,
+}: {
+  prediction: EnhancedPrediction;
+  summary: ClinicalRAGSummary;
+  evidenceBundle?: EvidenceBundleItem[];
+  safetyNotice?: string;
+}) {
+  const overall = RISK_CONFIG[prediction.overallRisk] || RISK_CONFIG.low;
+  const OverallIcon = overall.icon;
+  const priorityCondition = summary.priority_condition;
+
+  return (
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
       {/* Overall Risk Banner */}
       <div className={`rounded-xl border-2 p-5 ${overall.bg} ${overall.border}`}>
         <div className="flex items-start gap-3">
@@ -145,17 +238,23 @@ function ResultPanel({ prediction }: { prediction: Prediction }) {
         </div>
       </div>
 
-      {/* Child Info */}
+      {/* Child Info Card */}
       <Card>
-        <CardContent className="pt-4 pb-4 px-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary" />
+            Child Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
           <div className="grid grid-cols-3 gap-3 text-sm">
             {[
               { label: "Age", value: `${prediction.ageMonths} months` },
               { label: "Sex", value: prediction.sex.charAt(0).toUpperCase() + prediction.sex.slice(1) },
-              { label: "Region", value: prediction.region },
               { label: "Weight", value: `${prediction.weightKg} kg` },
               { label: "Height", value: `${prediction.heightCm} cm` },
               { label: "MUAC", value: `${prediction.muacCm} cm` },
+              { label: "Priority", value: priorityCondition ? priorityCondition.charAt(0).toUpperCase() + priorityCondition.slice(1) : "N/A" },
             ].map(({ label, value }) => (
               <div key={label}>
                 <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
@@ -166,43 +265,149 @@ function ResultPanel({ prediction }: { prediction: Prediction }) {
         </CardContent>
       </Card>
 
-      {/* Three Risk Cards */}
-      <div className="space-y-2.5">
-        <p className="text-sm font-semibold text-foreground">Malnutrition Assessment</p>
-        <RiskCard
-          label="Stunting (HAZ)"
-          risk={prediction.stuntingRisk}
-          probability={prediction.stuntingProb}
-          icon={Ruler}
-        />
-        <RiskCard
-          label="Wasting (WHZ)"
-          risk={prediction.wastingRisk}
-          probability={prediction.wastingProb}
-          icon={Scale}
-        />
-        <RiskCard
-          label="Underweight (WAZ)"
-          risk={prediction.underweightRisk}
-          probability={prediction.underweightProb}
-          icon={Maximize2}
-        />
-      </div>
+      {/* ML Risk Cards */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Brain className="w-4 h-4 text-primary" />
+            XGBoost Malnutrition Assessment
+          </CardTitle>
+          <CardDescription className="text-xs">
+            AI-generated probabilities for stunting, wasting, and underweight
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-2.5">
+          <RiskCard
+            label="Stunting (HAZ)"
+            risk={prediction.stuntingRisk}
+            probability={prediction.stuntingProbability}
+            icon={Ruler}
+          />
+          <RiskCard
+            label="Wasting (WHZ)"
+            risk={prediction.wastingRisk}
+            probability={prediction.wastingProbability}
+            icon={Scale}
+          />
+          <RiskCard
+            label="Underweight (WAZ)"
+            risk={prediction.underweightRisk}
+            probability={prediction.underweightProbability}
+            icon={Maximize2}
+          />
+        </CardContent>
+      </Card>
 
-      {/* Clinical Note */}
-      <div className="rounded-md border border-border bg-muted/30 p-3 flex gap-2.5">
-        <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          This AI prediction is a decision-support tool. All results should be validated by
-          qualified health professionals before clinical decisions are made.
-        </p>
+            {/* Clinical RAG Summary - Core Clinical Section */}
+      <Card className="border-l-4 border-l-primary">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Stethoscope className="w-4 h-4 text-primary" />
+            Clinical RAG Summary
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Evidence-based interpretation powered by WHO 2023 guidelines and peer-reviewed sources
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-4">
+          {/* Summary */}
+          <div className="rounded-md bg-primary/5 p-3 border border-primary/20">
+            <p className="text-sm font-medium text-foreground mb-1">Summary</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{summary.summary}</p>
+          </div>
+
+          {/* Rationale */}
+          <div className="rounded-md bg-muted/50 p-3">
+            <p className="text-sm font-medium text-foreground mb-1">Rationale</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{summary.rationale}</p>
+          </div>
+
+          {/* Red Flags */}
+          <div className="rounded-md bg-red-50 dark:bg-red-950/20 p-3 border border-red-200 dark:border-red-900">
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldAlert className="w-4 h-4 text-red-600 dark:text-red-400" />
+              <p className="text-sm font-semibold text-red-700 dark:text-red-400">Red Flags</p>
+            </div>
+            <ul className="space-y-1">
+              {summary.red_flags.map((flag, idx) => (
+                <li key={idx} className="text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
+                  <span className="text-xs mt-0.5">•</span>
+                  <span>{flag}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Suggested Action */}
+          <div className="rounded-md bg-emerald-50 dark:bg-emerald-950/20 p-3 border border-emerald-200 dark:border-emerald-900">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Suggested Action</p>
+            </div>
+            <p className="text-sm text-emerald-600 dark:text-emerald-400 leading-relaxed">{summary.suggested_action}</p>
+          </div>
+
+          {/* Citations */}
+          {summary.citations.length > 0 && (
+            <div className="rounded-md bg-slate-50 dark:bg-slate-900/50 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <BookOpen className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Evidence Citations</p>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {summary.citations.map((cid, idx) => (
+                  <Badge key={idx} variant="outline" className="text-xs font-mono">
+                    [{cid}]
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+            {/* Evidence Bundle - Source References */}
+      {evidenceBundle && evidenceBundle.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" />
+              Evidence Bundle
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {evidenceBundle.length} retrieved source(s) from WHO 2023 guidelines and peer-reviewed literature
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
+            {evidenceBundle.map((evidence, idx) => (
+              <EvidenceCard key={idx} evidence={evidence} />
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Safety Notice */}
+      {safetyNotice && (
+        <div className="rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 p-4 flex gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-1">Safety Notice</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 leading-relaxed">{safetyNotice}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Timestamp */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Clock className="w-3 h-3" />
+        <span>Generated: {new Date().toLocaleString()}</span>
       </div>
     </div>
   );
 }
 
 export default function Predict() {
-  const [result, setResult] = useState<Prediction | null>(null);
+  const [result, setResult] = useState<EnhancedPrediction | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -222,8 +427,8 @@ export default function Predict() {
 
   const mutation = useMutation({
     mutationFn: async (data: PredictionInput) => {
-      const res = await apiRequest("POST", "/api/predictions", data);
-      return res.json() as Promise<Prediction>;
+      const res = await apiRequest("POST", "/api/predictions/enhanced", data);
+      return res.json() as Promise<EnhancedPrediction>;
     },
     onSuccess: (data) => {
       setResult(data);
@@ -258,7 +463,7 @@ export default function Predict() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Predict</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Enter child measurements to run an AI malnutrition risk assessment
+          Enter child measurements to run an AI malnutrition risk assessment with WHO-aligned clinical guidance
         </p>
       </div>
 
@@ -344,12 +549,10 @@ export default function Predict() {
                       )}
                     />
                   </div>
-
                   <Separator />
 
-                  {/* Measurements */}
+                                    {/* Measurements Label */}
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Measurements</p>
-
                   <div className="grid grid-cols-3 gap-3">
                     <FormField
                       control={form.control}
@@ -499,7 +702,7 @@ export default function Predict() {
             </CardContent>
           </Card>
 
-          {/* WHO Reference */}
+                    {/* WHO Reference */}
           <Card>
             <CardContent className="pt-4 pb-4 px-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">WHO Classification Reference</p>
@@ -525,7 +728,12 @@ export default function Predict() {
         {/* Result Panel */}
         <div>
           {result ? (
-            <ResultPanel prediction={result} />
+            <ClinicalBriefPanel
+              prediction={result}
+              summary={result.clinicalRagSummary!}
+              evidenceBundle={result.evidenceBundle}
+              safetyNotice={result.safetyNotice}
+            />
           ) : (
             <Card className="h-full min-h-[400px] flex flex-col items-center justify-center text-center border-dashed">
               <CardContent className="pt-8 pb-8">
@@ -537,15 +745,15 @@ export default function Predict() {
                 </h3>
                 <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
                   {mutation.isPending
-                    ? "XGBoost models are analyzing the child's measurements..."
-                    : "Fill in the child's information on the left and click 'Run Prediction' to get an AI-powered malnutrition risk assessment."
+                    ? "XGBoost models are analyzing the child's measurements and RAG is retrieving WHO 2023 evidence..."
+                    : "Fill in the child's information on the left and click 'Run Prediction' to get an AI-powered malnutrition risk assessment with WHO-aligned clinical guidance."
                   }
                 </p>
                 {!mutation.isPending && (
                   <div className="mt-6 grid grid-cols-3 gap-3 text-xs text-muted-foreground">
                     {[
                       { icon: Brain, label: "XGBoost AI" },
-                      { icon: TrendingDown, label: "WHO Calibrated" },
+                      { icon: BookOpen, label: "WHO 2023 RAG" },
                       { icon: Activity, label: "Instant Results" },
                     ].map(({ icon: Icon, label }) => (
                       <div key={label} className="flex flex-col items-center gap-1.5">
