@@ -2,32 +2,27 @@
 system Enhanced Prediction API
 محطة API محسّنة للتنبؤ بسوء التغذية تجمع بين:
 - نموذج XGBoost للتنبؤ
-- نظام RAG للأدلة العلمية
-- BioBERT Mobile لاستخراج الكيانات الطبية
-- دليل المعرفة المحلي
+- نظام Clinical RAG للأدلة العلمية (WHO 2023/2024 + مراجعات حديثة)
 Author: system AI Team
-Version: 2.0.0
+Version: 3.0.0
 """
 import json
 import os
 import logging
-import time
 from datetime import datetime
-from typing import Dict, List, Optional, Any, TYPE_CHECKING
-from dataclasses import dataclass, asdict
-
-if TYPE_CHECKING:
-    from pydantic import BaseModel
+from typing import Dict, List, Optional, Any
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import uvicorn
 
-# استيراد المكوّنات الداخلية
-from rag_system import RAGSystem
-from biobert_mobile import BioBERTMobile
+from rag_system import ClinicalRAG   # النسخة الجديدة
+# من المفترض أن لديك خدمة ML XGBoost موجودة؛ هنا نستخدم واجهة مبسطة
+# يمكنك استبدال MLService بالتنفيذ الفعلي الموجود لديك.
+# from ml_service import MLService
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,9 +30,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# تعريف نماذج الإدخال والإخراج محلياً لتجنب الاستيراد الدائري
+
+# =========================
+# نماذج الإدخال والإخراج
+# =========================
+
 class PredictRequest(BaseModel):
-    """طلب تنبؤ لطفل واحد - مطابق لـ ChildInput في prediction_api.py"""
+    """طلب تنبؤ لطفل واحد"""
     child_name: str = Field(..., min_length=1, max_length=200, example="Amara Osei")
     age_months: int = Field(..., ge=0, le=60, description="العمر بالأشهر (0-60)", example=18)
     sex: str = Field(..., regex="^(male|female)$", description="جنس الطفل", example="female")
@@ -47,71 +46,88 @@ class PredictRequest(BaseModel):
     region: Optional[str] = Field(None, max_length=200, example="Central Region")
     notes: Optional[str] = Field(None, max_length=1000)
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "child_name": "Amara Osei",
-                "age_months": 18,
-                "sex": "female",
-                "weight_kg": 8.2,
-                "height_cm": 76.5,
-                "muac_cm": 12.8,
-                "region": "Central Region"
-            }
-        }
+
+class ClinicalRAGSummary(BaseModel):
+    """ملخص RAG السريري المنظم"""
+    priority_condition: Optional[str]
+    summary: str
+    rationale: str
+    red_flags: List[str]
+    suggested_action: str
+    citations: List[str]
+    evidence: List[Dict[str, Any]]
+    generated_at: str
+
 
 class EnhancedPredictionResponse(BaseModel):
-    """استجابة التنبؤ المحسّن - تتضمن تنبؤ ML + أدلة RAG + كيانات BioBERT"""
-    # بيانات التنبؤ الأساسية
+    """
+    استجابة التنبؤ المحسّن:
+    - احتمالات XGBoost
+    - ملخص سريري منظم من RAG
+    - حزمة الأدلة المسترجعة
+    - رسالة أمان واضحة
+    """
+    # بيانات الطفل
     child_name: str
     age_months: int
     sex: str
     weight_kg: float
     height_cm: float
     muac_cm: float
+
     # نتائج ML
-    stunting_risk: str
     stunting_probability: float
-    wasting_risk: str
     wasting_probability: float
-    underweight_risk: str
     underweight_probability: float
+    stunting_risk: str
+    wasting_risk: str
+    underweight_risk: str
     overall_risk: str
+
+    # قيم مساعدة (اختيارية)
     haz: Optional[float] = None
     waz: Optional[float] = None
     whz: Optional[float] = None
-    # أدلة RAG
-    rag_evidence: Optional[Dict[str, Any]] = None
-    # كيانات BioBERT الطبية
-    medical_entities: Optional[List[Dict[str, Any]]] = None
-    # توصيات
-    recommendations: List[str] = []
+
+    # ملخص RAG السريري
+    clinical_rag_summary: ClinicalRAGSummary
+
+    # حزمة الأدلة
+    evidence_bundle: List[Dict[str, Any]]
+
+    # رسالة أمان
+    safety_notice: str
+
+    # طابع زمني
     predicted_at: str
 
+
 class ModelInput(BaseModel):
-    """بيانات الإدخال لنموذج XGBoost الخام"""
+    """بيانات الإدخال الخام لنموذج XGBoost"""
     age_months: float
     sex: int  # 0=female, 1=male
     weight_kg: float
     height_cm: float
     muac_cm: float
 
+
+# =========================
 # تهيئة التطبيق
+# =========================
+
 app = FastAPI(
     title="system Enhanced Prediction API",
     description="""
-    واجهة API محسّنة تجمع بين نماذج XGBoost ونظام RAG و BioBERT Mobile.
-    ## المكوّنات
-    - **XGBoost**: للتنبؤ الأساسي بسوء التغذية
-    - **RAG System**: لاسترجاع الأدلة العلمية ذات الصلة
-    - **BioBERT Mobile**: لاستخراج الكيانات الطبية من النصوص
-    - **Knowledge Base**: دليل المعرفة المحلي باليمنية
-    """,
-    version="2.0.0",
+واجهة API محسّنة تجمع بين:
+- نموذج XGBoost للتنبؤ بسوء التغذية
+- Clinical RAG مبني على WHO 2023/2024 والأدلة المحكمة ذات الصلة
+
+هذا النظام يوفّر **دعم قرار** فقط، وليس بديلاً عن الحكم السريري.
+""",
+    version="3.0.0",
     docs_url="/docs",
 )
 
-# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -120,63 +136,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# المتغيرات العامة
-RAG_DB_PATH = os.environ.get("RAG_DB_PATH", "data/vector_store")
-KNOWLEDGE_BASE_PATH = os.environ.get("KNOWLEDGE_BASE_PATH", "knowledge_base.json")
+# مسارات الملفات
+KNOWLEDGE_BASE_PATH = os.environ.get("KNOWLEDGE_BASE_PATH", "python/knowledge_base.json")
 
-rag_system: Optional[RAGSystem] = None
-biobert: Optional[BioBERTMobile] = None
-knowledge_base: Dict[str, Any] = {}
+# خدمات عالمية
+rag: Optional[ClinicalRAG] = None
+# ml_service = MLService()  # فعّل هذا عندما تربط خدمة XGBoost الفعلية
 
-def load_knowledge_base():
-    """تحميل دليل المعرفة المحلي"""
-    global knowledge_base
-    if os.path.exists(KNOWLEDGE_BASE_PATH):
-        with open(KNOWLEDGE_BASE_PATH, "r", encoding="utf-8") as f:
-            knowledge_base = json.load(f)
-        logger.info(f"Loaded knowledge base with {len(knowledge_base)} entries.")
-    else:
-        logger.warning(f"Knowledge base not found at {KNOWLEDGE_BASE_PATH}")
-        knowledge_base = {}
 
-@app.on_event("startup")
-async def startup_event():
-    """تهيئة الخدمات المحسّنة عند بدء التطبيق"""
-    global rag_system, biobert
-    logger.info("=" * 60)
-    logger.info(" system Enhanced Prediction API starting up...")
-    logger.info(" Version: 2.0.0")
-    logger.info("=" * 60)
+# =========================
+# دوال مساعدة
+# =========================
 
-    # تحميل نظام RAG
-    try:
-        rag_system = RAGSystem(
-            db_path=RAG_DB_PATH,
-            knowledge_base_path=KNOWLEDGE_BASE_PATH
-        )
-        logger.info("RAG System initialized.")
-    except Exception as e:
-        logger.warning(f"RAG System failed to initialize: {e}")
-        rag_system = None
-
-    # تحميل BioBERT Mobile
-    try:
-        biobert = BioBERTMobile()
-        logger.info("BioBERT Mobile initialized.")
-    except Exception as e:
-        logger.warning(f"BioBERT Mobile failed to initialize: {e}")
-        biobert = None
-
-    # تحميل دليل المعرفة
-    load_knowledge_base()
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("system Enhanced Prediction API shutting down.")
-
-# =====================================================================
-# وظائف مساعدة
-# =====================================================================
 def prepare_model_input(data: Dict[str, Any]) -> ModelInput:
     """تحويل بيانات الإدخال إلى صيغة نموذج XGBoost"""
     return ModelInput(
@@ -184,8 +155,9 @@ def prepare_model_input(data: Dict[str, Any]) -> ModelInput:
         sex=1 if data.get("sex", "male").lower() == "male" else 0,
         weight_kg=float(data.get("weight_kg", 0)),
         height_cm=float(data.get("height_cm", 0)),
-        muac_cm=float(data.get("muac_cm", 0))
+        muac_cm=float(data.get("muac_cm", 0)),
     )
+
 
 def classify_risk(probability: float) -> str:
     """تصنيف المخاطر بناءً على الاحتمالية"""
@@ -198,84 +170,130 @@ def classify_risk(probability: float) -> str:
     else:
         return "low"
 
+
 def get_overall_risk(stunting: float, wasting: float, underweight: float) -> str:
     """تحديد مستوى المخاطر الإجمالي"""
     max_risk = max(stunting, wasting, underweight)
     return classify_risk(max_risk)
 
-def generate_recommendations(data: ModelInput, risks: Dict[str, str]) -> List[str]:
-    """توليد توصيات بناءً على عوامل الخطر"""
-    recs = []
-    
-    if risks.get("stunting") in ("high", "critical"):
-        recs.append("تحسين التغذية اليومية مع التركيز على البروتين والسعرات الحرارية")
-        recs.append("متابعة النمو شهرياً مع العامل الصحي")
-    
-    if risks.get("wasting") in ("high", "critical"):
-        recs.append("تقديم أطعمة غنية بالطاقة والبروتين فوراً")
-        recs.append("فحص是否存在 إصابة أو مرض كامن")
-    
-    if risks.get("underweight") in ("high", "critical"):
-        recs.append("زيادة عدد وجبات الطعام اليومية")
-        recs.append("إضافة مكملات غذائية إذا لزم الأمر")
-    
-    if not recs:
-        recs.append("الاستمرار في المتابعة الدورية")
-        recs.append("تشجيع الرضاعة الطبيعية إذا كان العمر مناسباً")
-    
-    return recs
 
-# =====================================================================
+def simulate_xgboost_prediction(model_input: ModelInput) -> Dict[str, float]:
+    """
+    محاكاة لتنبؤ XGBoost (استبدليها بمناداة النموذج الفعلي في مشروعك).
+    """
+    stunting_prob = 1.0 / (1.0 + np.exp(-(0.5 * model_input.age_months - 2.0)))
+    wasting_prob = 1.0 / (1.0 + np.exp(-(3.0 * (14.0 - model_input.muac_cm))))
+    underweight_prob = 1.0 / (1.0 + np.exp(-(0.8 * model_input.weight_kg - 5.0)))
+
+    return {
+        "stunting_probability": float(stunting_prob),
+        "wasting_probability": float(wasting_prob),
+        "underweight_probability": float(underweight_prob),
+    }
+
+
+# =========================
+# Startup / Shutdown
+# =========================
+
+@app.on_event("startup")
+async def startup_event():
+    global rag
+    logger.info("=" * 60)
+    logger.info(" system Enhanced Prediction API (RAG-integrated) starting up...")
+    logger.info(" Version: 3.0.0")
+    logger.info("=" * 60)
+
+    try:
+        rag = ClinicalRAG(kb_path=KNOWLEDGE_BASE_PATH)
+        logger.info("ClinicalRAG initialized successfully.")
+    except Exception as e:
+        logger.error(f"Failed to initialize ClinicalRAG: {e}")
+        rag = None
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("system Enhanced Prediction API shutting down.")
+
+
+# =========================
 # نقاط نهاية API
-# =====================================================================
+# =========================
+
 @app.post("/predict/enhanced", response_model=EnhancedPredictionResponse, tags=["Enhanced"])
 async def predict_enhanced(data: PredictRequest):
     """
-    تنبؤ محسّن يجمع ML + RAG + BioBERT.
+    نقطة نهاية تجمع:
+    - تنبؤ XGBoost لاحتمالات stunting/wasting/underweight
+    - بناء Clinical Query من بيانات الطفل
+    - استرجاع أدلة WHO 2023/2024 والمراجعات المحكمة عبر ClinicalRAG
+    - توليد ملخص سريري منظم بدون خطة علاج حرّة
     """
+    if rag is None:
+        raise HTTPException(
+            status_code=503,
+            detail="ClinicalRAG not initialized; knowledge base unavailable.",
+        )
+
     try:
-        # 1. التنبؤ باستخدام XGBoost
+        # 1) نموذج XGBoost ينتج الاحتمالات
         model_input = prepare_model_input(data.dict(exclude={"region", "notes"}))
-        
-        # حساب مؤشرات مبسّطة
-        bmi = model_input.weight_kg / ((model_input.height_cm / 100) ** 2) if model_input.height_cm > 0 else 0
-        muac_z = (model_input.muac_cm - 13.5) / 1.5  # تبسيط لحساب Z-score
-        
-        # محاكاة تنبؤات XGBoost (في الواقع ستُستدعى من model.predict)
-        stunting_prob = 1.0 / (1.0 + np.exp(-(0.5 * model_input.age_months - 2.0)))
-        wasting_prob = 1.0 / (1.0 + np.exp(-(3.0 * (14.0 - model_input.muac_cm))))
-        underweight_prob = 1.0 / (1.0 + np.exp(-(0.8 * model_input.weight_kg - 5.0)))
-        
-        overall = get_overall_risk(stunting_prob, wasting_prob, underweight_prob)
-        
-        # 2. استرجاع الأدلة من RAG
-        rag_evidence = None
-        if rag_system:
-            try:
-                rag_evidence = await rag_system.search(
-                    query=f"سوء تغذية طفل {data.age_months} شهر",
-                    top_k=3
-                )
-            except Exception as e:
-                logger.warning(f"RAG search failed: {e}")
-        
-        # 3. استخراج الكيانات الطبية من الملاحظات
-        medical_entities = []
-        if biobert and data.notes:
-            try:
-                entities = await biobert.extract_entities(data.notes)
-                medical_entities = entities
-            except Exception as e:
-                logger.warning(f"BioBERT extraction failed: {e}")
-        
-        # 4. توليد التوصيات
-        risks = {
-            "stunting": classify_risk(stunting_prob),
-            "wasting": classify_risk(wasting_prob),
-            "underweight": classify_risk(underweight_prob)
+
+        # TODO: استبدلي simulate_xgboost_prediction باستدعاء ml_service.predict(...)
+        # prediction = ml_service.predict(model_input.dict())
+        prediction = simulate_xgboost_prediction(model_input)
+
+        stunting_prob = prediction["stunting_probability"]
+        wasting_prob = prediction["wasting_probability"]
+        underweight_prob = prediction["underweight_probability"]
+
+        stunting_risk = classify_risk(stunting_prob)
+        wasting_risk = classify_risk(wasting_prob)
+        underweight_risk = classify_risk(underweight_prob)
+        overall_risk = get_overall_risk(stunting_prob, wasting_prob, underweight_prob)
+
+        priority_condition = max(
+            ["stunting", "wasting", "underweight"],
+            key=lambda k: prediction.get(f"{k}_probability", 0.0),
+        )
+
+        prediction_context = {
+            "stunting_risk": stunting_prob,
+            "wasting_risk": wasting_prob,
+            "underweight_risk": underweight_prob,
+            "priority_condition": priority_condition,
         }
-        recommendations = generate_recommendations(model_input, risks)
-        
+
+        # 2) محرك سريري يبني Clinical Query
+        child_dict = data.dict()
+        clinical_query = rag.build_clinical_query(child_dict, prediction_context)
+
+        # 3) RAG يسترجع مقاطع موثقة من WHO 2023/2024 + مراجعات
+        filters = {
+            "topic": [priority_condition, "feeding", "referral"],
+            "population": ["under_5", "6_59_months"],
+            "severity": ["any", "moderate", "high", "critical"],
+        }
+        retrieved = rag.retrieve(
+            query=clinical_query,
+            top_k=5,
+            filters=filters,
+            min_score=0.25,
+        )
+
+        # 4) المولد النصي ينتج فقط ملخص سريري منظم + rationale + red_flags + suggested_action + citations
+        clinical_brief_dict = rag.generate_clinical_brief(child_dict, prediction_context, retrieved)
+        clinical_brief = ClinicalRAGSummary(**clinical_brief_dict)
+
+        # 5) evidence_bundle منفصل للواجهة أو السجلات
+        evidence_bundle = clinical_brief_dict.get("evidence", [])
+
+        # حساب مؤشرات مساعدة مبسطة (يمكنك استبدالها بقيم WHZ/WAZ/HFA الحقيقية)
+        haz = round((model_input.height_cm / 100 - 0.8) / 0.1, 2) if model_input.height_cm > 0 else None
+        waz = round((model_input.weight_kg - 10) / 2, 2)
+        whz = round((model_input.height_cm - 75) / 10, 2)
+
         return EnhancedPredictionResponse(
             child_name=data.child_name,
             age_months=data.age_months,
@@ -283,63 +301,58 @@ async def predict_enhanced(data: PredictRequest):
             weight_kg=data.weight_kg,
             height_cm=data.height_cm,
             muac_cm=data.muac_cm,
-            stunting_risk=risks["stunting"],
             stunting_probability=round(stunting_prob, 3),
-            wasting_risk=risks["wasting"],
             wasting_probability=round(wasting_prob, 3),
-            underweight_risk=risks["underweight"],
             underweight_probability=round(underweight_prob, 3),
-            overall_risk=overall,
-            haz=round((model_input.height_cm / 100 - 0.8) / 0.1, 2) if model_input.height_cm > 0 else None,
-            waz=round((model_input.weight_kg - 10) / 2, 2),
-            whz=round((model_input.height_cm - 75) / 10, 2),
-            rag_evidence=rag_evidence,
-            medical_entities=medical_entities,
-            recommendations=recommendations,
-            predicted_at=datetime.now().isoformat()
+            stunting_risk=stunting_risk,
+            wasting_risk=wasting_risk,
+            underweight_risk=underweight_risk,
+            overall_risk=overall_risk,
+            haz=haz,
+            waz=waz,
+            whz=whz,
+            clinical_rag_summary=clinical_brief,
+            evidence_bundle=evidence_bundle,
+            safety_notice=(
+                "Decision-support only; not a substitute for clinical judgment. "
+                "All actions must follow WHO 2023/2024 guideline on wasting and nutritional oedema "
+                "and national malnutrition protocols."
+            ),
+            predicted_at=datetime.now().isoformat(),
         )
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Enhanced prediction error: {e}")
         raise HTTPException(status_code=500, detail=f"Enhanced prediction failed: {str(e)}")
+
 
 @app.get("/health", tags=["System"])
 async def health_check():
     """فحص حالة الخدمات المحسّنة"""
     return {
         "status": "healthy",
-        "rag_loaded": rag_system is not None,
-        "biobert_loaded": biobert is not None,
-        "knowledge_base_entries": len(knowledge_base),
-        "timestamp": datetime.now().isoformat()
+        "rag_loaded": rag is not None,
+        "knowledge_base_path": KNOWLEDGE_BASE_PATH,
+        "timestamp": datetime.now().isoformat(),
     }
 
-@app.get("/knowledge", tags=["Knowledge"])
-async def get_knowledge():
-    """الحصول على دليل المعرفة المحلي"""
-    return {
-        "entries": knowledge_base,
-        "count": len(knowledge_base)
-    }
 
 @app.get("/models/info", tags=["Models"])
 async def model_info():
     """معلومات النماذج المحمّلة"""
-    info = {
-        "rag_system": "loaded" if rag_system else "not_loaded",
-        "biobert_mobile": "loaded" if biobert else "not_loaded",
-        "knowledge_base_size": len(knowledge_base)
+    return {
+        "clinical_rag": "loaded" if rag is not None else "not_loaded",
+        "model_version": "XGBoost + ClinicalRAG 3.0.0",
     }
-    return info
 
-# =====================================================================
-# تشغيل الخادم
-# =====================================================================
+
 if __name__ == "__main__":
     uvicorn.run(
         "enhanced_prediction_api:app",
         host="0.0.0.0",
         port=8001,
         reload=True,
-        log_level="info"
+        log_level="info",
     )
