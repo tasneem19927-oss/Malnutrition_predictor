@@ -4,11 +4,11 @@ Prediction REST API
 A production-ready REST API using FastAPI that exposes system's
 XGBoost malnutrition prediction models over HTTP.
 Endpoints:
-    POST /predict       - Predict for a single child
-    POST /predict/batch - Predict for multiple children
-    GET /health         - Health check
-    GET /models/info    - Model information and metrics
-    GET /stats          - Prediction statistics
+    POST /predict        - Predict for a single child
+    POST /predict/batch  - Predict for multiple children
+    GET /health          - Health check
+    GET /models/info     - Model information and metrics
+    GET /stats           - Prediction statistics
 Usage:
     # Start server (development)
     uvicorn prediction_api:app --reload --port 8000
@@ -25,14 +25,14 @@ import time
 import logging
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 import uvicorn
-
 from xgboost_model import systemPredictor, PredictionResult
-# Fixed import: ClinicalRAG instead of systemRAG
+# ClinicalRAG for RAG-based clinical recommendations
 from rag_system import ClinicalRAG
 
 # Configure logging
@@ -49,7 +49,38 @@ HOST = os.environ.get("system_HOST", "0.0.0.0")
 PORT = int(os.environ.get("system_PORT", "8000"))
 KNOWLEDGE_BASE_PATH = os.environ.get("KNOWLEDGE_BASE_PATH", "python/knowledge_base.json")
 
-# Initialize FastAPI app
+# Global state
+predictor: Optional[systemPredictor] = None
+rag: Optional[ClinicalRAG] = None
+prediction_count = 0
+api_start_time: Optional[datetime] = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager - handles startup and shutdown."""
+    global predictor, rag, api_start_time
+    # Startup
+    api_start_time = datetime.now()
+    logger.info("=" * 60)
+    logger.info(" system Prediction API starting up...")
+    logger.info(f" Version: {API_VERSION}")
+    logger.info(f" Model directory: {MODEL_DIR}")
+    logger.info("=" * 60)
+    try:
+        predictor = systemPredictor(model_dir=MODEL_DIR)
+        predictor.load_all()
+        # Initialize ClinicalRAG
+        rag = ClinicalRAG(kb_path=KNOWLEDGE_BASE_PATH)
+        logger.info("ClinicalRAG initialized successfully.")
+    except Exception as e:
+        logger.error(f"Failed to load models: {e}")
+        logger.warning("API will start but predictions will fail until models are loaded.")
+    yield
+    # Shutdown
+    logger.info("system API shutting down.")
+
+# Initialize FastAPI app with lifespan
 app = FastAPI(
     title="system Child Malnutrition Prediction API",
     description="""
@@ -66,6 +97,7 @@ XGBoost to predict stunting, wasting, and underweight in children aged 0-60 mont
     version=API_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS middleware
@@ -77,46 +109,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global state
-predictor: Optional[systemPredictor] = None
-rag: Optional[ClinicalRAG] = None
-prediction_count = 0
-api_start_time = datetime.now()
-
 # =====================================================================
 # Pydantic Models (Request/Response schemas)
 # =====================================================================
 class ChildInput(BaseModel):
     """Input data for a single child prediction."""
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "child_name": "Amara Osei",
+            "age_months": 18,
+            "sex": "female",
+            "weight_kg": 8.2,
+            "height_cm": 76.5,
+            "muac_cm": 12.8,
+            "region": "Central Region"
+        }
+    })
     child_name: str = Field(..., min_length=1, max_length=200, example="Amara Osei")
     age_months: int = Field(..., ge=0, le=60, description="Age in months (0-60)", example=18)
-    sex: str = Field(..., regex="^(male|female)$", description="Child's sex", example="female")
+    sex: str = Field(..., pattern="^(male|female)$", description="Child's sex", example="female")
     weight_kg: float = Field(..., gt=0, lt=50, description="Weight in kilograms", example=8.2)
     height_cm: float = Field(..., gt=20, lt=150, description="Height in centimeters", example=76.5)
     muac_cm: float = Field(..., gt=5, lt=35, description="Mid-Upper Arm Circumference in cm", example=12.8)
     region: Optional[str] = Field(None, max_length=200, example="Central Region")
     notes: Optional[str] = Field(None, max_length=1000)
 
-    @validator("sex")
-    def lowercase_sex(cls, v):
+    @field_validator("sex")
+    @classmethod
+    def lowercase_sex(cls, v: str) -> str:
         return v.lower()
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "child_name": "Amara Osei",
-                "age_months": 18,
-                "sex": "female",
-                "weight_kg": 8.2,
-                "height_cm": 76.5,
-                "muac_cm": 12.8,
-                "region": "Central Region"
-            }
-        }
 
 class BatchInput(BaseModel):
     """Input for batch prediction of multiple children."""
-    children: List[ChildInput] = Field(..., min_items=1, max_items=500)
+    children: List[ChildInput] = Field(..., min_length=1, max_length=500)
+
 
 class PredictionResponse(BaseModel):
     """Response from a single prediction."""
@@ -138,6 +165,7 @@ class PredictionResponse(BaseModel):
     whz: Optional[float] = None
     predicted_at: str
 
+
 class BatchPredictionResponse(BaseModel):
     """Response from a batch prediction."""
     total: int
@@ -145,6 +173,7 @@ class BatchPredictionResponse(BaseModel):
     summary: Dict[str, int]
     high_risk_children: List[str]
     processed_at: str
+
 
 class HealthResponse(BaseModel):
     """API health check response."""
@@ -155,38 +184,13 @@ class HealthResponse(BaseModel):
     total_predictions: int
     timestamp: str
 
+
 class ModelInfoResponse(BaseModel):
     """Model information and metrics."""
     version: str
     models: Dict[str, Any]
     features: List[str]
 
-
-# =====================================================================
-# Startup / Shutdown Events
-# =====================================================================
-@app.on_event("startup")
-async def startup_event():
-    """Load models on API startup."""
-    global predictor, rag
-    logger.info("=" * 60)
-    logger.info(" system Prediction API starting up...")
-    logger.info(f" Version: {API_VERSION}")
-    logger.info(f" Model directory: {MODEL_DIR}")
-    logger.info("=" * 60)
-    try:
-        predictor = systemPredictor(model_dir=MODEL_DIR)
-        predictor.load_all()
-        # Initialize ClinicalRAG
-        rag = ClinicalRAG(kb_path=KNOWLEDGE_BASE_PATH)
-        logger.info("ClinicalRAG initialized successfully.")
-    except Exception as e:
-        logger.error(f"Failed to load models: {e}")
-        logger.warning("API will start but predictions will fail until models are loaded.")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("system API shutting down.")
 
 # =====================================================================
 # Middleware - Request logging
@@ -199,10 +203,12 @@ async def log_requests(request: Request, call_next):
     logger.info(f"{request.method} {request.url.path} - {response.status_code} ({elapsed:.3f}s)")
     return response
 
+
 # =====================================================================
 # Helper Functions
 # =====================================================================
 def result_to_response(result: PredictionResult) -> PredictionResponse:
+    """Convert a PredictionResult to a PredictionResponse."""
     return PredictionResponse(
         child_name=result.child_name,
         age_months=result.age_months,
@@ -223,7 +229,9 @@ def result_to_response(result: PredictionResult) -> PredictionResponse:
         predicted_at=datetime.now().isoformat(),
     )
 
+
 def get_predictor() -> systemPredictor:
+    """Get the loaded predictor or raise HTTPException."""
     if predictor is None or not predictor.models:
         raise HTTPException(
             status_code=503,
@@ -238,7 +246,7 @@ def get_predictor() -> systemPredictor:
 @app.get("/health", response_model=HealthResponse, tags=["System"])
 async def health_check():
     """Check API health and model status."""
-    uptime = (datetime.now() - api_start_time).total_seconds()
+    uptime = (datetime.now() - api_start_time).total_seconds() if api_start_time else 0.0
     models_loaded = predictor is not None and bool(predictor.models)
     return HealthResponse(
         status="healthy" if models_loaded else "degraded",
@@ -248,6 +256,7 @@ async def health_check():
         total_predictions=prediction_count,
         timestamp=datetime.now().isoformat(),
     )
+
 
 @app.get("/models/info", response_model=ModelInfoResponse, tags=["Models"])
 async def model_info():
@@ -269,6 +278,7 @@ async def model_info():
         features=pred.models["stunting"].feature_columns if "stunting" in pred.models else [],
     )
 
+
 @app.post("/predict", response_model=PredictionResponse, tags=["Prediction"])
 async def predict_single(child: ChildInput):
     """
@@ -281,7 +291,7 @@ async def predict_single(child: ChildInput):
     """
     global prediction_count
     pred = get_predictor()
-    child_data = child.dict(exclude={"region", "notes"})
+    child_data = child.model_dump(exclude={"region", "notes"})
     try:
         result = pred.predict(child_data)
         prediction_count += 1
@@ -289,6 +299,7 @@ async def predict_single(child: ChildInput):
     except Exception as e:
         logger.error(f"Prediction error: {e}")
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+
 
 @app.post("/predict/batch", response_model=BatchPredictionResponse, tags=["Prediction"])
 async def predict_batch(batch: BatchInput):
@@ -305,7 +316,7 @@ async def predict_batch(batch: BatchInput):
     high_risk_children = []
     try:
         for child in batch.children:
-            child_data = child.dict(exclude={"region", "notes"})
+                            child_data = child.model_dump(exclude={"region", "notes"})
             result = pred.predict(child_data)
             response = result_to_response(result)
             responses.append(response)
@@ -324,17 +335,19 @@ async def predict_batch(batch: BatchInput):
         logger.error(f"Batch prediction error: {e}")
         raise HTTPException(status_code=500, detail=f"Batch prediction failed: {str(e)}")
 
+
 @app.get("/stats", tags=["System"])
 async def get_stats():
     """Get API usage statistics."""
-    uptime = (datetime.now() - api_start_time).total_seconds()
+    uptime = (datetime.now() - api_start_time).total_seconds() if api_start_time else 0.0
     return {
         "total_predictions": prediction_count,
         "predictions_per_hour": round(prediction_count / (uptime / 3600), 1) if uptime > 0 else 0,
         "api_version": API_VERSION,
         "uptime_seconds": round(uptime, 1),
-        "started_at": api_start_time.isoformat(),
+        "started_at": api_start_time.isoformat() if api_start_time else None,
     }
+
 
 @app.get("/", tags=["System"])
 async def root():
@@ -351,6 +364,7 @@ async def root():
             "docs": "GET /docs",
         }
     }
+
 
 # =====================================================================
 # Run server
