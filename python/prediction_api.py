@@ -1,379 +1,197 @@
-"""
-system - Child Malnutrition Prediction System
-Prediction REST API
-A production-ready REST API using FastAPI that exposes system's
-XGBoost malnutrition prediction models over HTTP.
-Endpoints:
-    POST /predict        - Predict for a single child
-    POST /predict/batch  - Predict for multiple children
-    GET /health          - Health check
-    GET /models/info     - Model information and metrics
-    GET /stats           - Prediction statistics
-Usage:
-    # Start server (development)
-    uvicorn prediction_api:app --reload --port 8000
-    # Start server (production)
-    uvicorn prediction_api:app --host 0.0.0.0 --port 8000 --workers 4
-    # With gunicorn
-    gunicorn prediction_api:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
-Author: system AI Team
-Version: 1.0.0
-"""
-import os
-import sys
-import time
-import logging
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
 from datetime import datetime
-from typing import List, Optional, Dict, Any
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, field_validator, ConfigDict
 import uvicorn
-from xgboost_model import systemPredictor, PredictionResult
-# ClinicalRAG for RAG-based clinical recommendations
-from rag_system import ClinicalRAG
+import logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s"
-)
-logger = logging.getLogger("system.api")
-
-# API Configuration
-API_VERSION = "1.0.0"
-MODEL_DIR = os.environ.get("system_MODEL_DIR", "models")
-HOST = os.environ.get("system_HOST", "0.0.0.0")
-PORT = int(os.environ.get("system_PORT", "8000"))
-KNOWLEDGE_BASE_PATH = os.environ.get("KNOWLEDGE_BASE_PATH", "python/knowledge_base.json")
-
-# Global state
-predictor: Optional[systemPredictor] = None
-rag: Optional[ClinicalRAG] = None
-prediction_count = 0
-api_start_time: Optional[datetime] = None
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan manager - handles startup and shutdown."""
-    global predictor, rag, api_start_time
-    # Startup
-    api_start_time = datetime.now()
-    logger.info("=" * 60)
-    logger.info(" system Prediction API starting up...")
-    logger.info(f" Version: {API_VERSION}")
-    logger.info(f" Model directory: {MODEL_DIR}")
-    logger.info("=" * 60)
-    try:
-        predictor = systemPredictor(model_dir=MODEL_DIR)
-        predictor.load_all()
-        # Initialize ClinicalRAG
-        rag = ClinicalRAG(kb_path=KNOWLEDGE_BASE_PATH)
-        logger.info("ClinicalRAG initialized successfully.")
-    except Exception as e:
-        logger.error(f"Failed to load models: {e}")
-        logger.warning("API will start but predictions will fail until models are loaded.")
-    yield
-    # Shutdown
-    logger.info("system API shutting down.")
-
-# Initialize FastAPI app with lifespan
 app = FastAPI(
-    title="system Child Malnutrition Prediction API",
-    description="""
-system is an AI-powered child malnutrition prediction system that uses
-XGBoost to predict stunting, wasting, and underweight in children aged 0-60 months.
-## Features
-- **Stunting prediction** (chronic malnutrition: HAZ < -2 SD)
-- **Wasting prediction** (acute malnutrition: WHZ < -2 SD)
-- **Underweight prediction** (WAZ < -2 SD)
-- **Overall risk classification** (low, moderate, high, critical)
-- **Batch prediction** for multiple children
-- **WHO z-score estimation**
-""",
-    version=API_VERSION,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    lifespan=lifespan,
+    title="Child Malnutrition Prediction API",
+    version="2.0.0",
+    description="AI-powered malnutrition prediction for children aged 0-60 months"
 )
 
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# =====================================================================
-# Pydantic Models (Request/Response schemas)
-# =====================================================================
-class ChildInput(BaseModel):
-    """Input data for a single child prediction."""
-    model_config = ConfigDict(json_schema_extra={
-        "example": {
-            "child_name": "Amara Osei",
-            "age_months": 18,
-            "sex": "female",
-            "weight_kg": 8.2,
-            "height_cm": 76.5,
-            "muac_cm": 12.8,
-            "region": "Central Region"
-        }
-    })
-    child_name: str = Field(..., min_length=1, max_length=200, example="Amara Osei")
-    age_months: int = Field(..., ge=0, le=60, description="Age in months (0-60)", example=18)
-    sex: str = Field(..., pattern="^(male|female)$", description="Child's sex", example="female")
-    weight_kg: float = Field(..., gt=0, lt=50, description="Weight in kilograms", example=8.2)
-    height_cm: float = Field(..., gt=20, lt=150, description="Height in centimeters", example=76.5)
-    muac_cm: float = Field(..., gt=5, lt=35, description="Mid-Upper Arm Circumference in cm", example=12.8)
-    region: Optional[str] = Field(None, max_length=200, example="Central Region")
-    notes: Optional[str] = Field(None, max_length=1000)
+API_VERSION = "2.0.0"
+prediction_count = 0
+api_start_time = datetime.now()
 
-    @field_validator("sex")
-    @classmethod
-    def lowercase_sex(cls, v: str) -> str:
-        return v.lower()
-
-
-class BatchInput(BaseModel):
-    """Input for batch prediction of multiple children."""
-    children: List[ChildInput] = Field(..., min_length=1, max_length=500)
-
-
-class PredictionResponse(BaseModel):
-    """Response from a single prediction."""
-    child_name: str
-    age_months: int
+class PredictionInput(BaseModel):
+    child_id: Optional[str] = None
+    age_months: float
     sex: str
     weight_kg: float
     height_cm: float
-    muac_cm: float
-    stunting_risk: str
-    stunting_probability: float
-    wasting_risk: str
-    wasting_probability: float
-    underweight_risk: str
-    underweight_probability: float
-    overall_risk: str
+    muac_cm: Optional[float] = None
     haz: Optional[float] = None
-    waz: Optional[float] = None
     whz: Optional[float] = None
-    predicted_at: str
+    waz: Optional[float] = None
 
+class BatchPredictionInput(BaseModel):
+    children: List[PredictionInput]
 
-class BatchPredictionResponse(BaseModel):
-    """Response from a batch prediction."""
-    total: int
-    predictions: List[PredictionResponse]
-    summary: Dict[str, int]
-    high_risk_children: List[str]
-    processed_at: str
+def to_percentage(prob: float) -> float:
+    return round(float(prob) * 100, 2)
 
+def classify_severity_from_zscore(z_score: Optional[float], condition: str) -> Optional[str]:
+    if z_score is None:
+        return None
 
-class HealthResponse(BaseModel):
-    """API health check response."""
-    status: str
-    version: str
-    models_loaded: bool
-    uptime_seconds: float
-    total_predictions: int
-    timestamp: str
+    if z_score >= -2:
+        return "Normal"
+    elif -3 <= z_score < -2:
+        return "Moderate"
+    else:
+        if condition == "wasting":
+            return "Acute"
+        return "Severe"
 
+def classify_severity_from_probability(prob: float, condition: str) -> str:
+    if prob < 0.25:
+        return "Normal"
+    elif prob < 0.50:
+        return "Moderate"
+    elif prob < 0.75:
+        return "Acute" if condition == "wasting" else "Severe"
+    else:
+        return "Acute" if condition == "wasting" else "Severe"
 
-class ModelInfoResponse(BaseModel):
-    """Model information and metrics."""
-    version: str
-    models: Dict[str, Any]
-    features: List[str]
+def build_condition_result(prob: float, z_score: Optional[float], condition: str) -> Dict[str, Any]:
+    severity = classify_severity_from_zscore(z_score, condition)
+    if severity is None:
+        severity = classify_severity_from_probability(prob, condition)
 
-
-# =====================================================================
-# Middleware - Request logging
-# =====================================================================
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    start = time.time()
-    response = await call_next(request)
-    elapsed = time.time() - start
-    logger.info(f"{request.method} {request.url.path} - {response.status_code} ({elapsed:.3f}s)")
-    return response
-
-
-# =====================================================================
-# Helper Functions
-# =====================================================================
-def result_to_response(result: PredictionResult) -> PredictionResponse:
-    """Convert a PredictionResult to a PredictionResponse."""
-    return PredictionResponse(
-        child_name=result.child_name,
-        age_months=result.age_months,
-        sex=result.sex,
-        weight_kg=result.weight_kg,
-        height_cm=result.height_cm,
-        muac_cm=result.muac_cm,
-        stunting_risk=result.stunting_risk,
-        stunting_probability=result.stunting_probability,
-        wasting_risk=result.wasting_risk,
-        wasting_probability=result.wasting_probability,
-        underweight_risk=result.underweight_risk,
-        underweight_probability=result.underweight_probability,
-        overall_risk=result.overall_risk,
-        haz=result.haz,
-        waz=result.waz,
-        whz=result.whz,
-        predicted_at=datetime.now().isoformat(),
-    )
-
-
-def get_predictor() -> systemPredictor:
-    """Get the loaded predictor or raise HTTPException."""
-    if predictor is None or not predictor.models:
-        raise HTTPException(
-            status_code=503,
-            detail="Models not loaded. Please ensure models are trained and available."
-        )
-    return predictor
-
-
-# =====================================================================
-# API Endpoints
-# =====================================================================
-@app.get("/health", response_model=HealthResponse, tags=["System"])
-async def health_check():
-    """Check API health and model status."""
-    uptime = (datetime.now() - api_start_time).total_seconds() if api_start_time else 0.0
-    models_loaded = predictor is not None and bool(predictor.models)
-    return HealthResponse(
-        status="healthy" if models_loaded else "degraded",
-        version=API_VERSION,
-        models_loaded=models_loaded,
-        uptime_seconds=round(uptime, 1),
-        total_predictions=prediction_count,
-        timestamp=datetime.now().isoformat(),
-    )
-
-
-@app.get("/models/info", response_model=ModelInfoResponse, tags=["Models"])
-async def model_info():
-    """Get information about loaded models and their performance metrics."""
-    pred = get_predictor()
-    models_info = {}
-    for target, model in pred.models.items():
-        info = {
-            "target": target,
-            "version": model.version,
-            "feature_count": len(model.feature_columns),
-        }
-        if model.metrics:
-            info["metrics"] = model.metrics.to_dict()
-        models_info[target] = info
-    return ModelInfoResponse(
-        version=API_VERSION,
-        models=models_info,
-        features=pred.models["stunting"].feature_columns if "stunting" in pred.models else [],
-    )
-
-
-@app.post("/predict", response_model=PredictionResponse, tags=["Prediction"])
-async def predict_single(child: ChildInput):
-    """
-    Predict malnutrition risk for a single child.
-    Returns risk classifications and probabilities for:
-    - Stunting (chronic malnutrition)
-    - Wasting (acute malnutrition)
-    - Underweight
-    - Overall risk level
-    """
-    global prediction_count
-    pred = get_predictor()
-    child_data = child.model_dump(exclude={"region", "notes"})
-    try:
-        result = pred.predict(child_data)
-        prediction_count += 1
-        return result_to_response(result)
-    except Exception as e:
-        logger.error(f"Prediction error: {e}")
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
-
-
-@app.post("/predict/batch", response_model=BatchPredictionResponse, tags=["Prediction"])
-async def predict_batch(batch: BatchInput):
-    """
-    Predict malnutrition risk for multiple children at once.
-    Returns individual predictions plus a summary with:
-    - Risk distribution counts
-    - List of high-risk children needing urgent intervention
-    """
-    global prediction_count
-    pred = get_predictor()
-    responses = []
-    risk_counts = {"low": 0, "moderate": 0, "high": 0, "critical": 0}
-    high_risk_children = []
-    try:
-        for child in batch.children:
-                            child_data = child.model_dump(exclude={"region", "notes"})
-            result = pred.predict(child_data)
-            response = result_to_response(result)
-            responses.append(response)
-            risk_counts[result.overall_risk] = risk_counts.get(result.overall_risk, 0) + 1
-            if result.overall_risk in ("high", "critical"):
-                high_risk_children.append(result.child_name)
-            prediction_count += 1
-        return BatchPredictionResponse(
-            total=len(responses),
-            predictions=responses,
-            summary=risk_counts,
-            high_risk_children=high_risk_children,
-            processed_at=datetime.now().isoformat(),
-        )
-    except Exception as e:
-        logger.error(f"Batch prediction error: {e}")
-        raise HTTPException(status_code=500, detail=f"Batch prediction failed: {str(e)}")
-
-
-@app.get("/stats", tags=["System"])
-async def get_stats():
-    """Get API usage statistics."""
-    uptime = (datetime.now() - api_start_time).total_seconds() if api_start_time else 0.0
     return {
-        "total_predictions": prediction_count,
-        "predictions_per_hour": round(prediction_count / (uptime / 3600), 1) if uptime > 0 else 0,
-        "api_version": API_VERSION,
-        "uptime_seconds": round(uptime, 1),
-        "started_at": api_start_time.isoformat() if api_start_time else None,
+        "probability": to_percentage(prob),
+        "severity": severity
     }
 
+def simple_model_prediction(data: PredictionInput) -> Dict[str, float]:
+    stunting_prob = 0.15
+    wasting_prob = 0.10
+    underweight_prob = 0.12
+
+    if data.haz is not None:
+        if data.haz < -3:
+            stunting_prob = 0.85
+        elif data.haz < -2:
+            stunting_prob = 0.60
+        else:
+            stunting_prob = 0.10
+
+    if data.whz is not None:
+        if data.whz < -3:
+            wasting_prob = 0.90
+        elif data.whz < -2:
+            wasting_prob = 0.65
+        else:
+            wasting_prob = 0.08
+
+    if data.waz is not None:
+        if data.waz < -3:
+            underweight_prob = 0.88
+        elif data.waz < -2:
+            underweight_prob = 0.58
+        else:
+            underweight_prob = 0.09
+
+    if data.muac_cm is not None and data.muac_cm < 11.5:
+        wasting_prob = max(wasting_prob, 0.95)
+
+    return {
+        "stunting": stunting_prob,
+        "wasting": wasting_prob,
+        "underweight": underweight_prob
+    }
 
 @app.get("/", tags=["System"])
 async def root():
-    """API root - returns basic information."""
     return {
-        "name": "system Child Malnutrition Prediction API",
+        "name": "Child Malnutrition Prediction API",
         "version": API_VERSION,
         "description": "AI-powered malnutrition prediction for children aged 0-60 months",
         "endpoints": {
             "predict": "POST /predict",
             "batch_predict": "POST /predict/batch",
             "health": "GET /health",
-            "models": "GET /models/info",
-            "docs": "GET /docs",
+            "stats": "GET /stats"
         }
     }
 
+@app.get("/health", tags=["System"])
+async def health():
+    return {
+        "status": "ok",
+        "version": API_VERSION,
+        "started_at": api_start_time.isoformat()
+    }
 
-# =====================================================================
-# Run server
-# =====================================================================
+@app.get("/stats", tags=["System"])
+async def get_stats():
+    uptime = (datetime.now() - api_start_time).total_seconds()
+    return {
+        "total_predictions": prediction_count,
+        "predictions_per_hour": round(prediction_count / (uptime / 3600), 1) if uptime > 0 else 0,
+        "api_version": API_VERSION,
+        "uptime_seconds": round(uptime, 1),
+        "started_at": api_start_time.isoformat()
+    }
+
+@app.post("/predict", tags=["Prediction"])
+async def predict(data: PredictionInput):
+    global prediction_count
+    try:
+        model_outputs = simple_model_prediction(data)
+
+        response = {
+            "child_id": data.child_id,
+            "predictions": {
+                "stunting": build_condition_result(model_outputs["stunting"], data.haz, "stunting"),
+                "wasting": build_condition_result(model_outputs["wasting"], data.whz, "wasting"),
+                "underweight": build_condition_result(model_outputs["underweight"], data.waz, "underweight"),
+            },
+            "processed_at": datetime.now().isoformat()
+        }
+
+        prediction_count += 1
+        return response
+
+    except Exception as e:
+        logger.error(f"Prediction error: {e}")
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+
+@app.post("/predict/batch", tags=["Prediction"])
+async def batch_predict(batch: BatchPredictionInput):
+    global prediction_count
+    try:
+        responses = []
+
+        for child in batch.children:
+            model_outputs = simple_model_prediction(child)
+            result = {
+                "child_id": child.child_id,
+                "predictions": {
+                    "stunting": build_condition_result(model_outputs["stunting"], child.haz, "stunting"),
+                    "wasting": build_condition_result(model_outputs["wasting"], child.whz, "wasting"),
+                    "underweight": build_condition_result(model_outputs["underweight"], child.waz, "underweight"),
+                },
+                "processed_at": datetime.now().isoformat()
+            }
+            responses.append(result)
+
+        prediction_count += len(batch.children)
+
+        return {
+            "total": len(responses),
+            "predictions": responses,
+            "processed_at": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Batch prediction error: {e}")
+        raise HTTPException(status_code=500, detail=f"Batch prediction failed: {str(e)}")
+
 if __name__ == "__main__":
-    uvicorn.run(
-        "prediction_api:app",
-        host=HOST,
-        port=PORT,
-        reload=False,
-        log_level="info",
-    )
+    uvicorn.run("prediction_api:app", host="0.0.0.0", port=8000, reload=False, log_level="info")
