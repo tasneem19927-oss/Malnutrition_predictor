@@ -1,29 +1,29 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, User, Lock, AlertCircle } from "lucide-react";
+import { Brain, Mail, Lock, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { isAuthenticated, isLoading, login } = useAuth();
-  const [, navigate] = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!username.trim() || !password.trim()) {
-      setError("الرجاء إدخال اسم المستخدم وكلمة المرور");
+
+    if (!email.trim() || !password.trim()) {
+      setError("الرجاء إدخال البريد الإلكتروني وكلمة المرور");
       return;
     }
+
     try {
-      await login(username, password);
+      await login(email, password);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "فشل تسجيل الدخول";
       setError(msg);
@@ -62,11 +62,12 @@ export default function Login() {
           <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
             <Brain className="w-7 h-7 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">نظام النظام</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">لوحة تحكم النظام</CardTitle>
           <CardDescription className="text-sm text-muted-foreground mt-1">
-            نظام تنبؤ سوء التغذية عند الأطفال
+            نظام التنبؤ بسوء التغذية عند الأطفال
           </CardDescription>
         </CardHeader>
+
         <CardContent className="pt-6">
           {error && (
             <Alert variant="destructive" className="mb-4">
@@ -74,22 +75,24 @@ export default function Login() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
-                <User className="w-4 h-4" />
-                اسم المستخدم
+                <Mail className="w-4 h-4" />
+                البريد الإلكتروني
               </label>
               <Input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tasneem1992.7@gmail.com"
                 className="h-11"
-                autoComplete="username"
+                autoComplete="email"
                 autoFocus
               />
             </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <Lock className="w-4 h-4" />
@@ -104,21 +107,18 @@ export default function Login() {
                 autoComplete="current-password"
               />
             </div>
+
             <Button type="submit" className="w-full h-11 font-semibold mt-2">
               تسجيل الدخول
             </Button>
           </form>
+
           <div className="mt-6 pt-4 border-t border-border">
-            <p className="text-xs text-muted-foreground text-center space-y-1">
-              <span>حسابات تجريبية:</span>
-              <br />
-              <span className="font-mono bg-muted/50 px-2 py-0.5 rounded text-accent-foreground">
-                admin / admin123
-              </span>
-              <span className="inline-block w-2" />
-              <span className="font-mono bg-muted/50 px-2 py-0.5 rounded text-accent-foreground">
-                health / health123
-              </span>
+            <p className="text-xs text-muted-foreground text-center">
+              حساب الأدمن:
+            </p>
+            <p className="text-xs text-center mt-2 font-mono bg-muted/50 px-3 py-2 rounded text-accent-foreground break-all">
+              tasneem1992.7@gmail.com
             </p>
           </div>
         </CardContent>
