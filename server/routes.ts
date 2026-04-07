@@ -1,36 +1,119 @@
-import express, { type Express, type Request, type Response, type NextFunction } from "express";
-import { type Server } from "http";
+import express, {
+  type Express,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
+import { createServer, type Server } from "http";
+import http from "http";
+import session from "express-session";
+import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { type UserRole } from "@shared/schema";
-import http from "http";
-import bcrypt from "bcrypt";
-import session from "express-session";
 
 const SESSION_SECRET =
   process.env.SESSION_SECRET || "system-predictor-dev-secret-change-in-prod";
-
 const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8000";
-const PYTHON_API_TIMEOUT = parseInt(process.env.PYTHON_API_TIMEOUT || "30000", 10);
+const PYTHON_API_TIMEOUT = parseInt(
+  process.env.PYTHON_API_TIMEOUT || "30000",
+  10,
+);
 
 const ADMIN_EMAIL = "tasneem1992.7@gmail.com";
 const ADMIN_PASSWORD = "Aa123456Zz";
 
-async function checkPythonAPI(): Promise<{ healthy: boolean; responseTimeMs: number }> {
+type SessionUser = {
+  id: string;
+  email: string;
+  username: string;
+  role: UserRole | string;
+  fullName?: string;
+};
+
+type PythonPredictionMetric = {
+  probability?: number;
+  percentage?: number;
+  status?: string;
+  severity?: string;
+  risk?: "low" | "moderate" | "high" | "critical";
+  label?: string;
+  category?: string;
+  classification?: string;
+};
+
+type PythonPredictionResponse = {
+  childName?: string;
+  ageMonths?: number;
+  sex?: string;
+  weightKg?: number;
+  heightCm?: number;
+  muacCm?: number;
+  predictedAt?: string;
+
+  stunting?: PythonPredictionMetric;
+  wasting?: PythonPredictionMetric;
+  underweight?: PythonPredictionMetric;
+
+  stuntingProbability?: number;
+  wastingProbability?: number;
+  underweightProbability?: number;
+
+  stuntingRisk?: string;
+  wastingRisk?: string;
+  underweightRisk?: string;
+
+  stuntingStatus?: string;
+  wastingStatus?: string;
+  underweightStatus?: string;
+
+  stuntingSeverity?: string;
+  wastingSeverity?: string;
+  underweightSeverity?: string;
+
+  overallRisk?: "low" | "moderate" | "high" | "critical";
+  clinicalRagSummary?: unknown;
+  evidenceBundle?: unknown[];
+  safetyNotice?: string;
+  [key: string]: unknown;
+};
+
+declare module "express-session" {
+  interface SessionData {
+    user?: SessionUser;
+  }
+}
+
+function asyncHandler(
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>,
+) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
+async function checkPythonAPI(): Promise<{
+  healthy: boolean;
+  responseTimeMs: number;
+}> {
   const start = Date.now();
 
   return new Promise((resolve) => {
-    const req = http.get(`${PYTHON_API_URL}/health`, { timeout: PYTHON_API_TIMEOUT }, (res) => {
-      resolve({
-        healthy: res.statusCode === 200,
-        responseTimeMs: Date.now() - start,
-      });
-    });
+    const req = http.get(
+      `${PYTHON_API_URL}/health`,
+      { timeout: PYTHON_API_TIMEOUT },
+      (res) => {
+        resolve({
+          healthy: res.statusCode === 200,
+          responseTimeMs: Date.now() - start,
+        });
+      },
+    );
 
     req.on("error", () =>
       resolve({
         healthy: false,
         responseTimeMs: Date.now() - start,
-      })
+      }),
     );
 
     req.on("timeout", () => {
@@ -43,230 +126,416 @@ async function checkPythonAPI(): Promise<{ healthy: boolean; responseTimeMs: num
   });
 }
 
-export function createRoutes(app: Express, _server: Server): void {
+function toPercentage(value?: number) {
+  if (typeof value !== "number" || Number.isNaN(value)) return 0;
+  if (value <= 1) return Math.round(value * 100);
+  return Math.round(value);
+}
+
+function normalizeRisk(
+  value?: string,
+): "low" | "moderate" | "high" | "critical" {
+  const v = (value || "").toLowerCase().trim();
+
+  if (["critical", "acute", "emergency", "very_high"].includes(v)) {
+    return "critical";
+  }
+
+  if (["high", "severe", "serious"].includes(v)) {
+    return "high";
+  }
+
+  if (["moderate", "medium"].includes(v)) {
+    return "moderate";
+  }
+
+  return "low";
+}
+
+function normalizeStatus(value?: string, fallbackRisk?: string) {
+  const v = (value || "").toLowerCase().trim();
+
+  if (v) {
+    if (["sam", "acute", "acute_malnutrition"].includes(v)) return "acute";
+    if (["severe", "severely_malnourished"].includes(v)) return "severe";
+    if (["moderate", "mam"].includes(v)) return "moderate";
+    if (["normal", "healthy", "none", "low"].includes(v)) return "normal";
+    return v;
+  }
+
+  const risk = normalizeRisk(fallbackRisk);
+  if (risk === "critical") return "acute";
+  if (risk === "high") return "severe";
+  if (risk === "moderate") return "moderate";
+  return "normal";
+}
+
+function normalizeSeverity(status?: string, risk?: string) {
+  const s = normalizeStatus(status, risk);
+
+  if (s === "acute") return "acute";
+  if (s === "severe") return "severe";
+  if (s === "moderate") return "moderate";
+  return "normal";
+}
+
+function metricFromAny(
+  directMetric: PythonPredictionMetric | undefined,
+  probability?: number,
+  risk?: string,
+  status?: string,
+  severity?: string,
+) {
+  const rawProbability =
+    typeof directMetric?.probability === "number"
+      ? directMetric.probability
+      : typeof directMetric?.percentage === "number"
+        ? directMetric.percentage > 1
+          ? directMetric.percentage / 100
+          : directMetric.percentage
+        : typeof probability === "number"
+          ? probability
+          : 0;
+
+  const percentage =
+    typeof directMetric?.percentage === "number"
+      ? toPercentage(directMetric.percentage)
+      : toPercentage(rawProbability);
+
+  const finalRisk = normalizeRisk(directMetric?.risk || risk);
+  const finalStatus = normalizeStatus(
+    directMetric?.status ||
+      directMetric?.label ||
+      directMetric?.category ||
+      directMetric?.classification ||
+      status,
+    finalRisk,
+  );
+  const finalSeverity = normalizeSeverity(
+    directMetric?.severity || severity || finalStatus,
+    finalRisk,
+  );
+
+  return {
+    probability: rawProbability <= 1 ? rawProbability : rawProbability / 100,
+    percentage,
+    status: finalStatus,
+    severity: finalSeverity,
+    risk: finalRisk,
+  };
+}
+
+function getOverallRisk(metrics: Array<{ risk: string }>) {
+  if (metrics.some((m) => m.risk === "critical")) return "critical";
+  if (metrics.some((m) => m.risk === "high")) return "high";
+  if (metrics.some((m) => m.risk === "moderate")) return "moderate";
+  return "low";
+}
+
+function sanitizeUser(user: any) {
+  if (!user) return null;
+
+  return {
+    id: String(user.id ?? ""),
+    username: user.username ?? "",
+    email: user.email ?? "",
+    fullName: user.fullName ?? user.name ?? "",
+    role: user.role ?? "viewer",
+  };
+}
+
+async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (req.session.user) {
+    return next();
+  }
+
+  return res.status(401).json({ error: "Unauthorized" });
+}
+
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  if (req.session.user.role !== "admin") {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  return next();
+}
+
+export async function registerRoutes(app: Express): Promise<Server> {
   app.use(
     session({
       secret: SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: false,
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000,
+        sameSite: "lax",
+        secure: false,
+        maxAge: 1000 * 60 * 60 * 24,
       },
-    })
+    }),
   );
 
   app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
-  function requireAuth(requiredRole?: UserRole) {
-    return (req: Request, res: Response, next: NextFunction) => {
-      const sess = req.session as any;
+  app.get(
+    "/api/health",
+    asyncHandler(async (_req, res) => {
+      const python = await checkPythonAPI();
 
-      if (!sess || !sess.userId) {
+      res.json({
+        ok: true,
+        server: "healthy",
+        pythonApi: python,
+        timestamp: new Date().toISOString(),
+      });
+    }),
+  );
+
+  app.post(
+    "/api/auth/login",
+    asyncHandler(async (req, res) => {
+      const { username, email, identifier, password } = req.body ?? {};
+
+      const loginValue = String(identifier || email || username || "").trim();
+      const loginLower = loginValue.toLowerCase();
+      const passwordValue = String(password || "");
+
+      if (!loginValue || !passwordValue) {
+        return res.status(400).json({
+          error: "Email/username and password are required",
+        });
+      }
+
+      const isAdminEmail = loginLower === ADMIN_EMAIL.toLowerCase();
+      const isAdminUsername =
+        loginLower === "admin" || loginLower === "tasneem";
+      const isAdminPassword = passwordValue === ADMIN_PASSWORD;
+
+      if ((isAdminEmail || isAdminUsername) && isAdminPassword) {
+        const adminUser = {
+          id: "admin-local",
+          username: "admin",
+          email: ADMIN_EMAIL,
+          fullName: "Tasneem Omar",
+          role: "admin" as UserRole,
+        };
+
+        req.session.user = adminUser;
+        return res.json(adminUser);
+      }
+
+      let user: any = null;
+
+      if (typeof storage.getUserByEmail === "function" && loginValue.includes("@")) {
+        user = await storage.getUserByEmail(loginValue);
+      }
+
+      if (!user && typeof storage.getUserByUsername === "function") {
+        user = await storage.getUserByUsername(loginValue);
+      }
+
+      if (!user && typeof storage.getUserByIdentifier === "function") {
+        user = await storage.getUserByIdentifier(loginValue);
+      }
+
+      if (!user && typeof storage.getUser === "function" && !Number.isNaN(Number(loginValue))) {
+        user = await storage.getUser(Number(loginValue));
+      }
+
+      if (!user) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      const passwordHash = user.password || user.passwordHash;
+
+      if (!passwordHash) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      const validPassword = await bcrypt.compare(passwordValue, passwordHash);
+
+      if (!validPassword) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      const sessionUser = sanitizeUser(user);
+      req.session.user = sessionUser;
+
+      return res.json(sessionUser);
+    }),
+  );
+
+  app.post(
+    "/api/auth/logout",
+    asyncHandler(async (req, res) => {
+      req.session.destroy(() => {
+        res.json({ success: true });
+      });
+    }),
+  );
+
+  app.get(
+    "/api/auth/me",
+    asyncHandler(async (req, res) => {
+      if (!req.session.user) {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      if (requiredRole && sess.role !== requiredRole) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
+      return res.json(req.session.user);
+    }),
+  );
 
-      next();
-    };
-  }
-
-  app.get("/health", async (_req: Request, res: Response) => {
-    const pythonHealth = await checkPythonAPI();
-
-    res.json({
-      status: "ok",
-      python_api_healthy: pythonHealth.healthy,
-      response_time_ms: pythonHealth.responseTimeMs,
-    });
-  });
-
-  app.post("/api/auth/register", async (req: Request, res: Response) => {
-    const { username, password, role } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({ error: "Username and password required" });
-    }
-
-    const existing = await storage.getUserByUsername(username);
-    if (existing) {
-      return res.status(409).json({ error: "Username already exists" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await storage.createUser({
-      username,
-      password: hashedPassword,
-      role: (role as UserRole) || "health_worker",
-    });
-
-    res.status(201).json({
-      id: user.id,
-      username: user.username,
-      role: user.role,
-    });
-  });
-
-  app.post("/api/auth/login", async (req: Request, res: Response) => {
-    const { username, email, password } = req.body;
-    const loginId = email || username;
-
-    if (!loginId || !password) {
-      return res.status(400).json({ error: "Email/username and password required" });
-    }
-
-    if (loginId === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      const sess = req.session as any;
-      sess.userId = "admin-local";
-      sess.username = ADMIN_EMAIL;
-      sess.role = "admin";
-
+  app.get(
+    "/api/admin/session",
+    requireAdmin,
+    asyncHandler(async (req, res) => {
       return res.json({
-        id: "admin-local",
-        username: ADMIN_EMAIL,
-        role: "admin",
+        authenticated: true,
+        user: req.session.user,
       });
-    }
+    }),
+  );
 
-    const user = await storage.authenticateUser(loginId, password);
-    if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
+  app.post(
+    "/api/predictions/enhanced",
+    requireAuth,
+    asyncHandler(async (req, res) => {
+      const pythonHealth = await checkPythonAPI();
 
-    const sess = req.session as any;
-    sess.userId = user.id;
-    sess.username = user.username;
-    sess.role = user.role;
-
-    res.json({
-      id: user.id,
-      username: user.username,
-      role: user.role,
-    });
-  });
-
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ error: "Logout failed" });
+      if (!pythonHealth.healthy) {
+        return res.status(503).json({
+          error: "Python prediction service is unavailable",
+          pythonApi: pythonHealth,
+        });
       }
 
-      res.json({ message: "Logged out" });
-    });
-  });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), PYTHON_API_TIMEOUT);
 
-  app.get("/api/auth/me", (req: Request, res: Response) => {
-    const sess = req.session as any;
+      try {
+        const response = await fetch(`${PYTHON_API_URL}/predict/enhanced`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(req.body),
+          signal: controller.signal,
+        });
 
-    if (!sess || !sess.userId) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+        const raw = (await response.json()) as PythonPredictionResponse;
 
-    res.json({
-      id: sess.userId,
-      username: sess.username,
-      role: sess.role,
-    });
-  });
+        if (!response.ok) {
+          return res.status(response.status).json(raw);
+        }
 
-  app.get("/api/health/dashboard", requireAuth(), async (_req: Request, res: Response) => {
-    try {
-      const stats = await storage.getStats();
-      const pythonHealth = await checkPythonAPI();
-      const recentPredictions = await storage.getRecentPredictions(50);
+        const stunting = metricFromAny(
+          raw.stunting,
+          raw.stuntingProbability,
+          raw.stuntingRisk,
+          raw.stuntingStatus,
+          raw.stuntingSeverity,
+        );
 
-      res.json({
-        ...stats,
-        python_api_healthy: pythonHealth.healthy,
-        recent_predictions: recentPredictions,
-      });
-    } catch (e) {
-      res.status(500).json({ error: "Dashboard data unavailable" });
-    }
-  });
+        const wasting = metricFromAny(
+          raw.wasting,
+          raw.wastingProbability,
+          raw.wastingRisk,
+          raw.wastingStatus,
+          raw.wastingSeverity,
+        );
 
-  app.get("/api/health/predictions", requireAuth(), async (req: Request, res: Response) => {
-    try {
-      const { page, limit, search, status, region } = req.query;
+        const underweight = metricFromAny(
+          raw.underweight,
+          raw.underweightProbability,
+          raw.underweightRisk,
+          raw.underweightStatus,
+          raw.underweightSeverity,
+        );
 
-      const predictions = await storage.getPredictions(
-        Number(page) || 1,
-        Number(limit) || 10,
-        search as string,
-        status as string,
-        region as string
-      );
+        const result = {
+          childName: String(raw.childName ?? req.body?.childName ?? ""),
+          ageMonths: Number(raw.ageMonths ?? req.body?.ageMonths ?? 0),
+          sex: String(raw.sex ?? req.body?.sex ?? ""),
+          weightKg: Number(raw.weightKg ?? req.body?.weightKg ?? 0),
+          heightCm: Number(raw.heightCm ?? req.body?.heightCm ?? 0),
+          muacCm: Number(raw.muacCm ?? req.body?.muacCm ?? 0),
+          stunting,
+          wasting,
+          underweight,
+          overallRisk:
+            raw.overallRisk || getOverallRisk([stunting, wasting, underweight]),
+          clinicalRagSummary: raw.clinicalRagSummary,
+          evidenceBundle: raw.evidenceBundle || [],
+          safetyNotice:
+            raw.safetyNotice ||
+            "This result supports screening and should not replace clinical judgment.",
+          predictedAt: String(raw.predictedAt || new Date().toISOString()),
+        };
 
-      res.json(predictions);
-    } catch (e) {
-      res.status(500).json({ error: "Failed to fetch predictions" });
-    }
-  });
+        return res.json(result);
+      } catch (error: any) {
+        if (error?.name === "AbortError") {
+          return res.status(504).json({
+            error: "Prediction request timed out",
+          });
+        }
 
-  app.get("/api/health/export", requireAuth(), async (req: Request, res: Response) => {
-    try {
-      const { format, status, region } = req.query;
+        return res.status(500).json({
+          error: "Failed to process enhanced prediction",
+          details: error?.message || "Unknown server error",
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+    }),
+  );
 
-      const data = await storage.getPredictions(
-        1,
-        10000,
-        undefined,
-        status as string,
-        region as string
-      );
-
-      if ((format as string) === "json") {
+  app.get(
+    "/api/predictions",
+    requireAuth,
+    asyncHandler(async (_req, res) => {
+      if (typeof storage.getPredictions === "function") {
+        const data = await storage.getPredictions();
         return res.json(data);
       }
 
-      const csv =
-        "ID,Name,Date,Age,Sex,Weight,Height,MUAC,BMI,OverallRisk,StuntingRisk,WastingRisk\n" +
-        data.predictions
-          .map(
-            (p: any) =>
-              `${p.id},${p.childName},${p.createdAt},${p.ageMonths},${p.sex},${p.weightKg},${p.heightCm},${p.muacCm},${p.bmi},${p.overallRisk},${p.stuntingRisk},${p.wastingRisk}`
-          )
-          .join("\n");
+      return res.json([]);
+    }),
+  );
 
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", 'attachment; filename="predictions.csv"');
-      res.send(csv);
-    } catch (e) {
-      res.status(500).json({ error: "Export failed" });
-    }
-  });
+  app.get(
+    "/api/predictions/stats",
+    requireAuth,
+    asyncHandler(async (_req, res) => {
+      if (typeof storage.getPredictionStats === "function") {
+        const stats = await storage.getPredictionStats();
+        return res.json(stats);
+      }
 
-  app.post("/api/health/predictions", requireAuth(), async (req: Request, res: Response) => {
-    const { childName, ageMonths, sex, weightKg, heightCm, muacCm, region } = req.body;
-
-    if (
-      !childName ||
-      ageMonths === undefined ||
-      !sex ||
-      weightKg === undefined ||
-      heightCm === undefined
-    ) {
-      return res.status(400).json({ error: "Missing required child data" });
-    }
-
-    try {
-      const result = await storage.addPrediction({
-        childName,
-        ageMonths: Number(ageMonths),
-        sex,
-        weightKg: Number(weightKg),
-        heightCm: Number(heightCm),
-        muacCm: muacCm !== undefined ? Number(muacCm) : null,
-        region: region || "Unknown",
+      return res.json({
+        total: 0,
+        low: 0,
+        moderate: 0,
+        high: 0,
+        critical: 0,
       });
+    }),
+  );
 
-      res.status(201).json(result);
-    } catch (e) {
-      res.status(500).json({ error: "Failed to add prediction" });
-    }
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    console.error("Server error:", err);
+
+    if (res.headersSent) return;
+
+    res.status(err?.status || 500).json({
+      error: err?.message || "Internal server error",
+    });
   });
+
+  return createServer(app);
 }
