@@ -59,6 +59,15 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
 // ============================================
+// Sessions Table (for persistent login)
+// ============================================
+export const sessions = pgTable("sessions", {
+  sid: varchar("sid").primaryKey(),
+  sess: text("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
+
+// ============================================
 // Predictions Table
 // ============================================
 export const predictions = pgTable("predictions", {
@@ -100,10 +109,9 @@ export const predictionInputSchema = z.object({
 export type InsertPrediction = z.infer<typeof insertPredictionSchema>;
 export type Prediction = typeof predictions.$inferSelect;
 
-  // ============================================
+// ============================================
 // Enhanced Prediction (Clinical RAG)
 // ============================================
-
 export const clinicalRAGSummarySchema = z.object({
   priority_condition: z.string().nullable().optional(),
   summary: z.string(),
@@ -141,5 +149,4 @@ export const evidenceBundleItemSchema = z.object({
 
 export type ClinicalRAGSummary = z.infer<typeof clinicalRAGSummarySchema>;
 export type EvidenceBundleItem = z.infer<typeof evidenceBundleItemSchema>;
-
 export type PredictionInput = z.infer<typeof predictionInputSchema>;
