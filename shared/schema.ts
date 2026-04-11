@@ -33,29 +33,40 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   ],
 };
 
-export const USERS_DEFAULT_ADMIN = {
-  username: "admin",
-  password: "admin",
-  role: "admin" as UserRole,
-};
-
 // ============================================
 // Users Table
 // ============================================
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
+  email: text("email").notNull().unique(),
   password: text("password").notNull(),
+  fullName: text("full_name"),
   role: varchar("role", { length: 30 }).notNull().default("health_worker").$type<UserRole>(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
+  email: true,
   password: true,
+  fullName: true,
   role: true,
 });
 
+export const registerSchema = z.object({
+  username: z.string().min(3, "اسم المستخدم 3 أحرف على الأقل"),
+  email: z.string().email("بريد إلكتروني غير صالح"),
+  password: z.string().min(8, "كلمة المرور 8 أحرف على الأقل"),
+  fullName: z.string().min(2, "الاسم الكامل مطلوب"),
+  role: z.enum(["health_worker", "doctor"], {
+    errorMap: () => ({ message: "الدور يجب أن يكون health_worker أو doctor" }),
+  }),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
 export type User = typeof users.$inferSelect;
 
 // ============================================
