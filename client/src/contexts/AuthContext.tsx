@@ -9,7 +9,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { User } from "@shared/schema";
+import type { User, RegisterInput } from "@shared/schema";
 
 type AuthState = {
   user: User | null;
@@ -19,6 +19,7 @@ type AuthState = {
   isHealthWorker: boolean;
   isDoctor: boolean;
   login: (identifier: string, password: string) => Promise<void>;
+  register: (data: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -31,14 +32,7 @@ async function fetchCurrentUser(): Promise<User | null> {
     const res = await fetch(`${API_BASE}/auth/me`, {
       credentials: "include",
     });
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        return null;
-      }
-      throw new Error("Failed to fetch current user");
-    }
-
+    if (!res.ok) return null;
     return await res.json();
   } catch {
     return null;
@@ -56,37 +50,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async ({
-      identifier,
-      password,
-    }: {
-      identifier: string;
-      password: string;
-    }) => {
-      const payload = identifier.includes("@")
-        ? { email: identifier, password }
-        : { username: identifier, password };
-
+    mutationFn: async ({ identifier, password }: any) => {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ identifier, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Login failed");
+      return data as User;
+    },
+    onSuccess: (data) => queryClient.setQueryData(["auth", "me"], data),
+  });
+
+  const registerMutation = useMutation({
+    mutationFn: async (payload: RegisterInput) => {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(payload),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Login failed");
-      }
-
+      if (!res.ok) throw new Error(data.error || "Registration failed");
       return data as User;
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["auth", "me"], data);
-    },
+    onSuccess: (data) => queryClient.setQueryData(["auth", "me"], data),
   });
 
   const logoutMutation = useMutation({
@@ -95,12 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "POST",
         credentials: "include",
       });
-
-      if (!res.ok) {
-        throw new Error("Logout failed");
-      }
-
-      return await res.json();
+      if (!res.ok) throw new Error("Logout failed");
     },
     onSuccess: () => {
       queryClient.setQueryData(["auth", "me"], null);
@@ -109,33 +94,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const value = useMemo<AuthState>(() => {
-    const role = (user as any)?.role;
-
     return {
       user,
       isLoading,
       isAuthenticated: !!user,
-      isAdmin: role === "admin",
-      isHealthWorker: role === "health_worker",
-      isDoctor: role === "doctor",
-      login: async (identifier: string, password: string) => {
+      isAdmin: user?.role === "admin",
+      isHealthWorker: user?.role === "health_worker",
+      isDoctor: user?.role === "doctor",
+      login: async (identifier, password) => {
         await loginMutation.mutateAsync({ identifier, password });
+      },
+      register: async (data) => {
+        await registerMutation.mutateAsync(data);
       },
       logout: async () => {
         await logoutMutation.mutateAsync();
       },
     };
-  }, [user, isLoading, loginMutation, logoutMutation]);
+  }, [user, isLoading, loginMutation, registerMutation, logoutMutation]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthState {
   const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }
