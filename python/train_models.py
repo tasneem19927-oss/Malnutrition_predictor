@@ -21,8 +21,9 @@ import logging
 import argparse
 import warnings
 from pathlib import Path
-from rag_system import systemRAG
-from biobert_mobile import BioBERTMobile
+from typing import Dict
+# from rag_system import systemRAG
+# from biobert_mobile import BioBERTMobile
 
 import numpy as np
 import pandas as pd
@@ -150,7 +151,7 @@ def load_and_validate_data(filepath: str) -> pd.DataFrame:
     logger.info(f"Loaded {len(df)} records with {len(df.columns)} columns")
 
     required_columns = [
-        "age_months", "sex", "weight_kg", "height_cm", "muac_cm",
+        "age_months", "sex", "weight_kg", "height_cm"
         "is_stunted", "is_wasted", "is_underweight"
     ]
     missing = [col for col in required_columns if col not in df.columns]
@@ -163,7 +164,10 @@ def load_and_validate_data(filepath: str) -> pd.DataFrame:
     df = df[df["age_months"].between(0, 60)]
     df = df[df["weight_kg"].between(0.5, 30)]
     df = df[df["height_cm"].between(30, 130)]
-    df = df[df["muac_cm"].between(6, 25)]
+if "muac_cm" in df.columns:
+        df = df[df["muac_cm"].between(6, 25)]
+    else:
+        df["muac_cm"] = 14.0
     df = df[df["sex"].str.lower().isin(["male", "female"])]
 
     removed = initial_count - len(df)
@@ -319,8 +323,6 @@ def main():
 
 
 if __name__ == "__main__":
-    # Fix missing Dict import
-    from typing import Dict
     main()
 
 
