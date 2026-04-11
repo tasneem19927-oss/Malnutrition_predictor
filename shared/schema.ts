@@ -60,8 +60,8 @@ export const registerSchema = z.object({
   email: z.string().email("بريد إلكتروني غير صالح"),
   password: z.string().min(8, "كلمة المرور 8 أحرف على الأقل"),
   fullName: z.string().min(2, "الاسم الكامل مطلوب"),
-  role: z.enum(["health_worker", "doctor"], {
-    errorMap: () => ({ message: "الدور يجب أن يكون health_worker أو doctor" }),
+  r  role: z.enum(["admin", "health_worker", "doctor"], {
+    errorMap: () => ({ message: "الدور يجب أن يكون admin أو health_worker أو doctor" }),
   }),
 });
 
