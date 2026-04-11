@@ -7,13 +7,13 @@ import { randomUUID } from "crypto";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  authenticateUser(username: string, password: string): Promise<User | null>;
   getStats(): Promise<{ total: number; critical: number; high: number; moderate: number; low: number; stuntingCount: number; wastingCount: number; underweightCount: number }>;
   getRecentPredictions(limit: number): Promise<Prediction[]>;
   getPredictions(page: number, limit: number, search?: string, status?: string, region?: string): Promise<{ predictions: Prediction[]; total: number; page: number; pages: number }>;
   listUsers(): Promise<User[]>;
-  updateUserRole(id: number, role: UserRole): Promise<User>;
+  updateUserRole(id: string, role: UserRole): Promise<User>;
   addPrediction(data: { childName: string; ageMonths: number; sex: string; weightKg: number; heightCm: number; muacCm: number; region: string }): Promise<Prediction>;
 }
 
@@ -37,18 +37,21 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).find(u => u.username === username);
   }
 
-  async createUser(user: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const newUser: User = { ...user as any, id };
-    this.users.set(id, newUser);
-    return newUser;
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(u => u.email === email);
   }
 
-  async authenticateUser(username: string, password: string): Promise<User | null> {
-    const user = Array.from(this.users.values()).find(u => u.username === username);
-    if (!user) return null;
-    if (user.password !== password) return null;
-    return user;
+  async createUser(user: InsertUser): Promise<User> {
+    const id = randomUUID();
+    const newUser: User = { 
+      ...user, 
+      id, 
+      isActive: true, 
+      fullName: user.fullName || null,
+      createdAt: new Date() 
+    } as User;
+    this.users.set(id, newUser);
+    return newUser;
   }
 
   async getStats() {
@@ -86,11 +89,11 @@ export class MemStorage implements IStorage {
   }
 
   async listUsers(): Promise<User[]> {
-    return Array.from(this.users.values()).map(u => ({ ...u, password: undefined } as any));
+    return Array.from(this.users.values()).map(u => ({ ...u, password: "[REDACTED]" } as any));
   }
 
-  async updateUserRole(id: number, role: UserRole): Promise<User> {
-    const user = Array.from(this.users.values()).find(u => u.id === String(id));
+  async updateUserRole(id: string, role: UserRole): Promise<User> {
+    const user = this.users.get(id);
     if (!user) throw new Error('User not found');
     user.role = role;
     return user;
@@ -98,24 +101,16 @@ export class MemStorage implements IStorage {
 
   async addPrediction(data: { childName: string; ageMonths: number; sex: string; weightKg: number; heightCm: number; muacCm: number; region: string }): Promise<Prediction> {
     const id = randomUUID();
-    const bmi = (data.weightKg / ((data.heightCm / 100) ** 2));
-    const overallRisk = bmi < 15.5 ? 'critical' : bmi < 16.5 ? 'high' : bmi < 17.5 ? 'moderate' : 'low';
     const prediction: Prediction = {
       id,
-      childName: data.childName,
-      ageMonths: data.ageMonths,
-      sex: data.sex,
-      weightKg: data.weightKg,
-      heightCm: data.heightCm,
-      muacCm: data.muacCm,
-      region: data.region,
+      ...data,
       stuntingRisk: 'low',
       wastingRisk: 'low',
       underweightRisk: 'low',
       stuntingProb: 0,
       wastingProb: 0,
       underweightProb: 0,
-      overallRisk,
+      overallRisk: 'low',
       notes: null,
       createdAt: new Date(),
     } as Prediction;
@@ -132,7 +127,6 @@ export class DatabaseStorage implements IStorage {
   private schema: any;
 
   constructor() {
-    // Lazy import to avoid issues if DATABASE_URL not set during testing
     const { db } = require('./db');
     const schema = require('@shared/schema');
     this.db = db;
@@ -159,6 +153,16 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const { eq } = await import('drizzle-orm');
+    const result = await this.db
+      .select()
+      .from(this.schema.users)
+      .where(eq(this.schema.users.email, email))
+      .limit(1);
+    return result[0];
+  }
+
   async createUser(user: InsertUser): Promise<User> {
     const result = await this.db
       .insert(this.schema.users)
@@ -167,15 +171,7 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async authenticateUser(username: string, password: string): Promise<User | null> {
-    const user = await this.getUserByUsername(username);
-    if (!user) return null;
-    if (user.password !== password) return null;
-    return user;
-  }
-
   async getStats() {
-    const { sql } = await import('drizzle-orm');
     const preds = await this.db.select().from(this.schema.predictions);
     return {
       total: preds.length,
@@ -204,9 +200,8 @@ export class DatabaseStorage implements IStorage {
     if (search) conditions.push(ilike(this.schema.predictions.childName, `%${search}%`));
     if (status) conditions.push(eq(this.schema.predictions.overallRisk, status));
     if (region) conditions.push(ilike(this.schema.predictions.region, `%${region}%`));
-
+    
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
     const allPreds = await this.db
       .select()
       .from(this.schema.predictions)
@@ -217,7 +212,6 @@ export class DatabaseStorage implements IStorage {
     const pages = Math.ceil(total / limit);
     const start = (page - 1) * limit;
     const paginated = allPreds.slice(start, start + limit);
-
     return { predictions: paginated, total, page, pages };
   }
 
@@ -226,39 +220,29 @@ export class DatabaseStorage implements IStorage {
     return users.map((u: any) => ({ ...u, password: undefined }));
   }
 
-  async updateUserRole(id: number, role: UserRole): Promise<User> {
+  async updateUserRole(id: string, role: UserRole): Promise<User> {
     const { eq } = await import('drizzle-orm');
     const result = await this.db
       .update(this.schema.users)
       .set({ role })
-      .where(eq(this.schema.users.id, String(id)))
+      .where(eq(this.schema.users.id, id))
       .returning();
     if (!result[0]) throw new Error('User not found');
     return result[0];
   }
 
   async addPrediction(data: { childName: string; ageMonths: number; sex: string; weightKg: number; heightCm: number; muacCm: number; region: string }): Promise<Prediction> {
-    const id = randomUUID();
-    const bmi = data.weightKg / ((data.heightCm / 100) ** 2);
-    const overallRisk = bmi < 15.5 ? 'critical' : bmi < 16.5 ? 'high' : bmi < 17.5 ? 'moderate' : 'low';
     const result = await this.db
       .insert(this.schema.predictions)
       .values({
-        id,
-        childName: data.childName,
-        ageMonths: data.ageMonths,
-        sex: data.sex,
-        weightKg: data.weightKg,
-        heightCm: data.heightCm,
-        muacCm: data.muacCm,
-        region: data.region,
+        ...data,
         stuntingRisk: 'low',
         wastingRisk: 'low',
         underweightRisk: 'low',
         stuntingProb: 0,
         wastingProb: 0,
         underweightProb: 0,
-        overallRisk,
+        overallRisk: 'low',
         notes: null,
       })
       .returning();
@@ -266,10 +250,6 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// ============================================
-// Export active storage instance
-// Use DatabaseStorage if DATABASE_URL is set, else MemStorage
-// ============================================
 export const storage: IStorage = process.env.DATABASE_URL
   ? new DatabaseStorage()
   : new MemStorage();
