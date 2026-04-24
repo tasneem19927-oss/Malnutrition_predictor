@@ -20,6 +20,7 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score,
     f1_score, roc_auc_score
@@ -109,6 +110,112 @@ class ModelMetrics:
     def to_dict(self) -> Dict:
         return asdict(self)
 
+@dataclass
+class MedicalMetrics:
+    """
+    Medical evaluation metrics critical for healthcare AI.
+    Follows WHO and FDA guidelines for diagnostic AI systems.
+    """
+    # Standard ML metrics
+    accuracy: float
+    precision: float
+    recall: float
+    f1: float
+    auc_roc: float
+    
+    # Medical-specific metrics
+    sensitivity: float  # True Positive Rate (Recall)
+    specificity: float  # True Negative Rate
+    ppv: float         # Positive Predictive Value (Precision)
+    npv: float         # Negative Predictive Value
+    
+    # Clinical context
+    prevalence: float
+    target: str
+    threshold: float = 0.5
+    
+    @classmethod
+    def from_predictions(cls, y_true, y_pred_proba, target: str, threshold: float = 0.5):
+        """
+        حساب جميع المقاييس من التنبؤات.
+        
+        Args:
+            y_true: الحقيقة الفعلية (0/1)
+            y_pred_proba: الاحتماليات (0-1)
+            target: اسم الحالة (stunting/wasting/underweight)
+            threshold: عتبة التصنيف
+        """
+        y_pred = (y_pred_proba >= threshold).astype(int)
+        
+        # Confusion matrix
+        tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+        
+        # Standard metrics
+        accuracy = accuracy_score(y_true, y_pred)
+        precision = precision_score(y_true, y_pred, zero_division=0)
+        recall = recall_score(y_true, y_pred, zero_division=0)
+        f1 = f1_score(y_true, y_pred, zero_division=0)
+        auc = roc_auc_score(y_true, y_pred_proba) if len(np.unique(y_true)) > 1 else 0.0
+        
+        # Medical metrics
+        sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0  # Recall
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+        ppv = tp / (tp + fp) if (tp + fp) > 0 else 0.0          # Precision
+        npv = tn / (tn + fn) if (tn + fn) > 0 else 0.0
+        
+        prevalence = (tp + fn) / (tp + tn + fp + fn)
+        
+        return cls(
+            accuracy=accuracy,
+            precision=precision,
+            recall=recall,
+            f1=f1,
+            auc_roc=auc,
+            sensitivity=sensitivity,
+            specificity=specificity,
+            ppv=ppv,
+            npv=npv,
+            prevalence=prevalence,
+            target=target,
+            threshold=threshold
+        )
+    
+    def print_medical_report(self):
+        """طباعة تقرير طبي شامل"""
+        print("\n" + "="*70)
+        print(f"  MEDICAL EVALUATION REPORT - {self.target.upper()}")
+        print("="*70)
+        print(f"  Prevalence in dataset: {self.prevalence:.1%}")
+        print(f"  Classification threshold: {self.threshold}")
+        print("-"*70)
+        print("  STANDARD ML METRICS")
+        print("-"*70)
+        print(f"  Accuracy  : {self.accuracy:.4f} ({self.accuracy*100:.1f}%)")
+        print(f"  Precision : {self.precision:.4f}")
+        print(f"  Recall    : {self.recall:.4f}")
+        print(f"  F1-Score  : {self.f1:.4f}")
+        print(f"  AUC-ROC   : {self.auc_roc:.4f}")
+        print("-"*70)
+        print("  CLINICAL METRICS (WHO/FDA Standards)")
+        print("-"*70)
+        print(f"  Sensitivity (TPR) : {self.sensitivity:.4f} - قدرة النموذج على اكتشاف الحالات المصابة")
+        print(f"  Specificity (TNR) : {self.specificity:.4f} - قدرة النموذج على تحديد الأصحاء")
+        print(f"  PPV (Precision)   : {self.ppv:.4f} - احتمال أن التنبؤ الإيجابي صحيح")
+        print(f"  NPV               : {self.npv:.4f} - احتمال أن التنبؤ السلبي صحيح")
+        print("-"*70)
+        
+        # Clinical interpretation
+        if self.sensitivity < 0.80:
+            print("  ⚠️  WARNING: Sensitivity < 80% - قد يفوّت النموذج حالات خطيرة")
+        if self.specificity < 0.70:
+            print("  ⚠️  WARNING: Specificity < 70% - قد يشخص أصحاء كمرضى (False Positives)")
+        if self.npv > 0.95:
+            print("  ✅ Excellent NPV - يمكن الاعتماد على التنبؤات السلبية")
+        
+        print("="*70 + "\n")
+    
+    def to_dict(self):
+        return asdict(self)
 @dataclass
 class PredictionResult:
     child_name: str
