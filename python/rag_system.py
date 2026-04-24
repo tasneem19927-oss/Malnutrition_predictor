@@ -10,7 +10,7 @@ import os
 import logging
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, asdict
-
+import hashlib
 # SentenceTransformer - يدعم العربية والإنجليزية
 from sentence_transformers import SentenceTransformer
 import faiss
@@ -201,60 +201,121 @@ class ClinicalRAG:
         ]
 
         def _build_or_load_index(self):
-        """
-        بناء فهرس FAISS أو تحميله من القرص.
-        FAISS IndexFlatL2 - سريع وخفيف للعمل على CPU.
-        """
-        if not self.documents:
-            logger.warning("No documents to build index.")
-            return
-        if os.path.exists(self.index_path):
-            try:
-                self.index = faiss.read_index(self.index_path)
-                logger.info(f"Loaded FAISS index from {self.index_path}")
-                return
-            except Exception as e:
-                logger.warning(f"Failed to load index: {e}. Rebuilding...")
-        logger.info("Building FAISS index from scratch...")
-        self.embeddings = self.model.encode(
-            self.documents,
-            convert_to_numpy=True,
-            show_progress_bar=True
-        )
-        dimension = self.embeddings.shape[1]
-        self.index = faiss.IndexFlatL2(dimension)
-        self.index.add(self.embeddings.astype('float32'))
-        os.makedirs(os.path.dirname(self.index_path), exist_ok=True)
-        faiss.write_index(self.index, self.index_path)
-        logger.info(f"FAISS index saved to {self.index_path}")
+        
+def _compute_kb_hash(self) -> str:
+    """حساب hash لـ KB للتحقق من التحديثات"""
+    if not os.path.exists(self.kb_path):
+        return "no_kb"
+    with open(self.kb_path, 'rb') as f:
+        return hashlib.md5(f.read()).hexdigest()
 
+def _save_index_metadata(self, kb_hash: str):
+    """حفظ metadata مع الـ index"""
+    meta = {
+        "kb_hash": kb_hash,
+        "doc_count": len(self.documents),
+        "created_at": pd.Timestamp.now().isoformat()
+    }
+    meta_path = self.index_path + ".meta"
+    with open(meta_path, "w") as f:
+        json.dump(meta, f, indent=2)
+
+def _index_is_valid(self) -> bool:
+    """التحقق من صحة الـ index الحالي"""
+    meta_path = self.index_path + ".meta"
+    if not os.path.exists(meta_path) or not os.path.exists(self.index_path):
+        return False
+    
+    with open(meta_path) as f:
+        meta = json.load(f)
+    
+    current_hash = self._compute_kb_hash()
+    return meta.get("kb_hash") == current_hash
+
+def _build_or_load_index():
+    """
+    بناء أو تحميل FAISS index مع التحقق من الصحة.
+    
+    FIXES:
+    1. Index staleness - يتحقق من hash الـ KB
+    2. Cosine similarity - يستخدم IndexFlatIP بدلاً من L2
+    3. Normalization - يطبّع embeddings لتحسين البحث
+    """
+    if not self.documents:
+        logger.warning("No documents to build index.")
+        return
+
+    # التحقق من صحة الـ index الموجود
+    if self._index_is_valid():
+        try:
+            self.index = faiss.read_index(self.index_path)
+            logger.info(f"✅ Loaded valid FAISS index from {self.index_path}")
+            return
+        except Exception as e:
+            logger.warning(f"Failed to load index: {e}. Rebuilding...")
+
+    # إعادة بناء الـ index
+    logger.info("🔨 Building FAISS index from scratch...")
+    
+    # تضمين Documents مع تطبيع
+    self.embeddings = self.model.encode(
+        self.documents,
+        convert_to_numpy=True,
+        normalize_embeddings=True,  # ← تطبيع للـ cosine similarity
+        show_progress_bar=True
+    )
+    
+    dimension = self.embeddings.shape[1]
+    
+    # استخدام Inner Product (= Cosine بعد التطبيع)
+    self.index = faiss.IndexFlatIP(dimension)  # ← بدلاً من IndexFlatL2
+    self.index.add(self.embeddings.astype('float32'))
+    
+    # حفظ الـ index + metadata
+    os.makedirs(os.path.dirname(self.index_path), exist_ok=True)
+    faiss.write_index(self.index, self.index_path)
+    self._save_index_metadata(self._compute_kb_hash())
+    
+    logger.info(f"✅ FAISS index built and saved to {self.index_path}")
+    
     def retrieve(
-        self,
-        query: str,
-        top_k: int = 3,
-        language: str = "ar",
-        min_score: float = 0.5
-    ) -> List[EvidenceItem]:
-        """
-        استرجاع الأدلة العلمية الأكثر صلة بالاستعلام.
-        """
-        if self.index is None or not self.documents:
-            return []
-        query_emb = self.model.encode(
-            [query],
-            convert_to_numpy=True
-        ).astype('float32')
-        distances, indices = self.index.search(query_emb, top_k)
-        results = []
-        refs = self.knowledge_base.get('scientific_references', [])
-        guidelines = self.knowledge_base.get('treatment_guidelines', [])
-        total_docs = len(refs) + len(guidelines)
-        for score, idx in zip(distances[0], indices[0]):
-            if idx >= total_docs:
-                continue
-            similarity = 1.0 / (1.0 + score)
-            if similarity < min_score:
-                continue
+    self,
+    query: str,
+    top_k: int = 3,
+    language: str = "ar",
+    min_score: float = 0.3  # ← threshold منخفض لـ cosine
+) -> List[EvidenceItem]:
+    """
+    استرجاع الأدلة العلمية بناءً على cosine similarity.
+    """
+    if self.index is None or not self.documents:
+        return []
+
+    # تضمين الاستعلام (مع تطبيع)
+    query_emb = self.model.encode(
+        [query],
+        convert_to_numpy=True,
+        normalize_embeddings=True  # ← مهم للـ cosine
+    ).astype('float32')
+
+    # البحث (مع IndexFlatIP، النتائج هي cosine similarities)
+    scores, indices = self.index.search(query_emb, top_k)
+
+    results = []
+    refs = self.knowledge_base.get('scientific_references', [])
+    guidelines = self.knowledge_base.get('treatment_guidelines', [])
+    total_docs = len(refs) + len(guidelines)
+
+    for score, idx in zip(scores[0], indices[0]):
+        if idx >= total_docs:
+            continue
+        
+        # مع IndexFlatIP، score هو cosine similarity [-1, 1]
+        # لا حاجة لتحويل 1/(1+dist)
+        similarity = float(score)
+        
+        if similarity < min_score:
+            continue
             if idx < len(refs):
                 ref = refs[idx]
                 item = EvidenceItem(
