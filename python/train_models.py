@@ -150,10 +150,11 @@ def load_and_validate_data(filepath: str) -> pd.DataFrame:
     df = pd.read_csv(filepath)
     logger.info(f"Loaded {len(df)} records with {len(df.columns)} columns")
 
-    required_columns = [
-        "age_months", "sex", "weight_kg", "height_cm"
-        "is_stunted", "is_wasted", "is_underweight"
-    ]
+    
+required_columns = [
+    "age_months", "sex", "weight_kg", "height_cm", 
+    "is_stunted", "is_wasted", "is_underweight"
+]
     missing = [col for col in required_columns if col not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns: {missing}")
