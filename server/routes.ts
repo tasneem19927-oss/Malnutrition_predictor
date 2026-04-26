@@ -13,7 +13,7 @@ import { type UserRole, registerSchema } from "@shared/schema";
 
 const SESSION_SECRET =
   process.env.SESSION_SECRET || "system-predictor-dev-secret-change-in-prod";
-const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8000";
+const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8001";
 const PYTHON_API_TIMEOUT = parseInt(
   process.env.PYTHON_API_TIMEOUT || "30000",
   10,
