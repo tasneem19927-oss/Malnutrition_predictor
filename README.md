@@ -36,7 +36,7 @@ system/
 │   ├── predict_demo_script.py       # Batch prediction demo
 │   ├── prediction_api.py            # FastAPI REST API server
 │   ├── xgboost_model.py             # ML utilities and model classes
-│   ├── system_sample_training_data.csv  # 500 sample child records
+│   ├── nizam_sample_training_data.csv  # 500 sample child records
 │   └── requirements_full.txt        # Python dependencies
 ├── schema.sql                       # PostgreSQL database schema
 ├── README.md                        # This file
@@ -64,7 +64,7 @@ pip install -r python/requirements_full.txt
 
 ```bash
 cd python
-python train_models.py --data system_sample_training_data.csv --output models/
+python train_models.py --data nizam_sample_training_data.csv --output models/
 ```
 
 Expected output:
